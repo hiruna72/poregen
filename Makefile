@@ -9,11 +9,11 @@ LDFLAGS		+= -lzstd
 endif
 
 # change the tool name to what you want
-BINARY = xyztool
+BINARY = poregen
 
 OBJ = $(BUILD_DIR)/main.o \
-      $(BUILD_DIR)/xyztool.o \
-      $(BUILD_DIR)/subtool1_main.o \
+      $(BUILD_DIR)/poregen.o \
+      $(BUILD_DIR)/gmove.o \
       $(BUILD_DIR)/thread.o \
 
 ifdef asan
@@ -29,16 +29,18 @@ $(BINARY): $(OBJ) slow5lib/lib/libslow5.a
 $(BUILD_DIR)/main.o: src/main.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-$(BUILD_DIR)/xyztool.o: src/xyztool.c src/misc.h src/error.h src/xyztool.h
+$(BUILD_DIR)/poregen.o: src/poregen.c src/misc.h src/error.h src/poregen.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-$(BUILD_DIR)/subtool1_main.o: src/subtool1_main.c src/error.h
+$(BUILD_DIR)/gmove.o: src/gmove.c src/error.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/thread.o: src/thread.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 # follow the main.o above and add more objects here if needed
+
+all:$(BINARY)
 
 slow5lib/lib/libslow5.a:
 	$(MAKE) -C slow5lib zstd=$(zstd) no_simd=$(no_simd) zstd_local=$(zstd_local) lib/libslow5.a

@@ -6,7 +6,7 @@
  */
 
 #include <pthread.h>
-#include "xyztool.h"
+#include "poregen.h"
 #include "error.h"
 #include "misc.h"
 

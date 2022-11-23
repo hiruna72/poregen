@@ -9,7 +9,7 @@
 
 #include "error.h"
 #include "misc.h"
-#include "xyztool.h"
+#include "poregen.h"
 
 #ifdef HAVE_EXECINFO_H
     #include <execinfo.h>
@@ -39,13 +39,13 @@ void sig_handler(int sig) {
     exit(EXIT_FAILURE);
 }
 
-int subtool1_main(int argc, char* argv[]);
+int gmove(int argc, char* argv[]);
 
 int print_usage(FILE *fp_help){
 
-    fprintf(fp_help,"Usage: xyztool <command> [options]\n\n");
+    fprintf(fp_help,"Usage: poregen <command> [options]\n\n");
     fprintf(fp_help,"command:\n");
-    fprintf(fp_help,"         subtool1      do something\n");
+    fprintf(fp_help,"         gmove         pore model using guppy move table\n");
     fprintf(fp_help,"         subtool2      do something\n");
     if(fp_help==stderr){
         return(EXIT_FAILURE);
@@ -67,12 +67,12 @@ int main(int argc, char* argv[]){
 
     if(argc<2){
         return print_usage(stderr);
-    } else if (strcmp(argv[1],"subtool1")==0){
-        ret=subtool1_main(argc-1, argv+1);
+    } else if (strcmp(argv[1],"gmove")==0){
+        ret=gmove(argc-1, argv+1);
     } else if (strcmp(argv[1],"subtool2")==0){
-        ret=subtool1_main(argc-1, argv+1);
+        ret=gmove(argc-1, argv+1);
     } else if(strcmp(argv[1],"--version")==0 || strcmp(argv[1],"-V")==0){
-        fprintf(stdout,"xyztool %s\n",XYZTOOL_VERSION);
+        fprintf(stdout,"xyztool %s\n",POREGEN_VERSION);
         exit(EXIT_SUCCESS);
     } else if(strcmp(argv[1],"--help")==0 || strcmp(argv[1],"-h")==0){
         return print_usage(stdout);
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]){
         return print_usage(stderr);
     }
 
-    fprintf(stderr,"[%s] Version: %s\n", __func__,XYZTOOL_VERSION);
+    fprintf(stderr,"[%s] Version: %s\n", __func__,POREGEN_VERSION);
     fprintf(stderr, "[%s] CMD:", __func__);
     for (int i = 0; i < argc; ++i) {
         fprintf(stderr, " %s", argv[i]);

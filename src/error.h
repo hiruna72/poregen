@@ -13,10 +13,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#define xyztool_log_level get_log_level()
+#define poregen_log_level get_log_level()
 
 // the level of verbosity in the log printed to the standard error
-enum xyztool_log_level_opt {
+enum poregen_log_level_opt {
     LOG_OFF,      // nothing at all
     LOG_ERR,      // error messages
     LOG_WARN,     // warning and error messages
@@ -26,8 +26,8 @@ enum xyztool_log_level_opt {
     LOG_TRAC      // tracing, debugging, verbose, information, warning and error messages
 };
 
-enum xyztool_log_level_opt get_log_level();
-void set_log_level(enum xyztool_log_level_opt level);
+enum poregen_log_level_opt get_log_level();
+void set_log_level(enum poregen_log_level_opt level);
 
 #define DEBUG_PREFIX "[DEBUG] %s: " /* TODO function before debug */
 #define VERBOSE_PREFIX "[INFO] %s: "
@@ -37,7 +37,7 @@ void set_log_level(enum xyztool_log_level_opt level);
 #define NO_COLOUR "\033[0m"
 
 #define LOG_TRACE(msg, ...) { \
-    if (xyztool_log_level >= LOG_TRAC) { \
+    if (poregen_log_level >= LOG_TRAC) { \
         fprintf(stderr, DEBUG_PREFIX msg \
                 " At %s:%d\n", \
                 __func__, __VA_ARGS__, __FILE__, __LINE__ - 1); \
@@ -45,7 +45,7 @@ void set_log_level(enum xyztool_log_level_opt level);
 }
 
 #define LOG_DEBUG(msg, ...) { \
-    if (xyztool_log_level >= LOG_DBUG) { \
+    if (poregen_log_level >= LOG_DBUG) { \
         fprintf(stderr, DEBUG_PREFIX msg \
                 " At %s:%d\n", \
                 __func__, __VA_ARGS__, __FILE__, __LINE__ - 1); \
@@ -53,19 +53,19 @@ void set_log_level(enum xyztool_log_level_opt level);
 }
 
 #define VERBOSE(msg, ...) { \
-    if (xyztool_log_level >= LOG_VERB) { \
+    if (poregen_log_level >= LOG_VERB) { \
         fprintf(stderr, VERBOSE_PREFIX msg "\n", __func__, __VA_ARGS__); \
     } \
 }
 
 #define INFO(msg, ...) { \
-    if (xyztool_log_level >= LOG_INFO) { \
+    if (poregen_log_level >= LOG_INFO) { \
         fprintf(stderr, INFO_PREFIX msg NO_COLOUR "\n", __func__, __VA_ARGS__); \
     } \
 }
 
 #define WARNING(msg, ...) { \
-    if (xyztool_log_level >= LOG_WARN) { \
+    if (poregen_log_level >= LOG_WARN) { \
         fprintf(stderr, WARNING_PREFIX msg NO_COLOUR \
                 " At %s:%d\n", \
                 __func__, __VA_ARGS__, __FILE__, __LINE__ - 1); \
@@ -73,7 +73,7 @@ void set_log_level(enum xyztool_log_level_opt level);
 }
 
 #define ERROR(msg, ...) { \
-    if (xyztool_log_level >= LOG_ERR) { \
+    if (poregen_log_level >= LOG_ERR) { \
         fprintf(stderr, ERROR_PREFIX msg NO_COLOUR \
                 " At %s:%d\n", \
                 __func__, __VA_ARGS__, __FILE__, __LINE__ - 1); \

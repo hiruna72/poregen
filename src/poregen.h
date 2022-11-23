@@ -1,25 +1,25 @@
-/* @file xyztool.h
+/* @file poregen.h
 **
 ******************************************************************************/
 
-#ifndef XYZTOOL_H
-#define XYZTOOL_H
+#ifndef POREGEN_H
+#define POREGEN_H
 
 #include <stdint.h>
 #include <slow5/slow5.h>
 
-#define XYZTOOL_VERSION "0.1.0"
+#define POREGEN_VERSION "0.1.0"
 
 /*******************************************************
  * flags related to the user specified options (opt_t) *
  *******************************************************/
 
-#define XYZTOOL_RNA 0x001 //if RNA or not
-#define XYZTOOL_DTW 0x002 //if dtw-std
-#define XYZTOOL_INV 0x004 //if set, reverse reference events instead of query events
-#define XYZTOOL_SEC 0x008 //if secondaries are printed
-#define XYZTOOL_REF 0x010 //map to the whole reference
-#define XYZTOOL_END 0x020 //map the end of the query
+#define POREGEN_RNA 0x001 //if RNA or not
+#define POREGEN_DTW 0x002 //if dtw-std
+#define POREGEN_INV 0x004 //if set, reverse reference events instead of query events
+#define POREGEN_SEC 0x008 //if secondaries are printed
+#define POREGEN_REF 0x010 //map to the whole reference
+#define POREGEN_END 0x020 //map the end of the query
 
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold

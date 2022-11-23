@@ -1,8 +1,8 @@
-/* @file  dtw_main.c
+/* @file  poregen.c
 **
 ** @@
 ******************************************************************************/
-#include "xyztool.h"
+#include "poregen.h"
 #include "error.h"
 #include "misc.h"
 #include <assert.h>
@@ -27,7 +27,7 @@ static struct option long_options[] = {
 
 
 static inline void print_help_msg(FILE *fp_help, opt_t opt){
-    fprintf(fp_help,"Usage: xyztool subtool1 reads.blow5\n");
+    fprintf(fp_help,"Usage: poregen gmove reads.blow5\n");
     fprintf(fp_help,"\nbasic options:\n");
     fprintf(fp_help,"   -t INT                     number of processing threads [%d]\n",opt.num_thread);
     fprintf(fp_help,"   -K INT                     batch size (max number of reads loaded at once) [%d]\n",opt.batch_size);
@@ -67,7 +67,7 @@ static inline void yes_or_no(opt_t* opt, uint64_t flag, int long_idx,
     }
 }
 
-int subtool1_main(int argc, char* argv[]) {
+int gmove(int argc, char* argv[]) {
 
     double realtime0 = realtime();
 
@@ -108,9 +108,9 @@ int subtool1_main(int argc, char* argv[]) {
             }
         } else if (c=='v'){
             int v = atoi(optarg);
-            set_log_level((enum xyztool_log_level_opt)v);
+            set_log_level((enum poregen_log_level_opt)v);
         } else if (c=='V'){
-            fprintf(stdout,"xyztool %s\n",XYZTOOL_VERSION);
+            fprintf(stdout,"gmove %s\n",POREGEN_VERSION);
             exit(EXIT_SUCCESS);
         } else if (c=='h'){
             fp_help = stdout;

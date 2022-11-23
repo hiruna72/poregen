@@ -1,4 +1,4 @@
-/* @file xyztool.c
+/* @file poregen.c
 **
 ** @@
 ******************************************************************************/
@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "xyztool.h"
+#include "poregen.h"
 #include "misc.h"
 #include "error.h"
 
@@ -18,7 +18,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-enum xyztool_log_level_opt _log_level = LOG_VERB;
+enum poregen_log_level_opt _log_level = LOG_VERB;
 
 /* initialise the core data structure */
 core_t* init_core(char *slow5file, opt_t opt,double realtime0) {
@@ -217,10 +217,10 @@ void init_opt(opt_t* opt) {
 }
 
 
-enum xyztool_log_level_opt get_log_level(){
+enum poregen_log_level_opt get_log_level(){
     return _log_level;
 }
 
-void set_log_level(enum xyztool_log_level_opt level){
+void set_log_level(enum poregen_log_level_opt level){
     _log_level = level;
 }

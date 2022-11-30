@@ -24,6 +24,8 @@
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold
 
+enum signal_scaling{ noscale, medmad_scale };
+
 /* user specified options */
 typedef struct {
 
@@ -32,6 +34,8 @@ typedef struct {
     int64_t batch_size_bytes;   //max bytes loaded at once: B
 
     int32_t num_thread; //t
+    int32_t kmer_size; //k
+    enum signal_scaling signal_scale;
     int32_t debug_break;
 
 } opt_t;

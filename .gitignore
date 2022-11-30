@@ -43,3 +43,4 @@ Thumbs.db
 # binaries
 /poregen
 .idea/
+test/output

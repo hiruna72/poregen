@@ -18,7 +18,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-enum poregen_log_level_opt _log_level = LOG_VERB;
+enum poregen_log_level_opt _log_level = LOG_INFO;
 
 /* initialise the core data structure */
 core_t* init_core(char *slow5file, opt_t opt,double realtime0) {
@@ -211,7 +211,8 @@ void init_opt(opt_t* opt) {
     opt->batch_size = 512;
     opt->batch_size_bytes = 20*1000*1000;
     opt->num_thread = 8;
-
+    opt->kmer_size = 6;
+    opt->signal_scale = medmad_scale;
     opt->debug_break=-1;
 
 }

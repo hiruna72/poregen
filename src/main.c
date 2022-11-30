@@ -15,7 +15,7 @@
     #include <execinfo.h>
 #endif
 
-extern enum xyztool_log_level_opt xyztool_log_level;
+extern enum poregen_log_level_opt poregen_log_level;
 
 //make the segmentation faults a bit cool
 void sig_handler(int sig) {
@@ -39,6 +39,7 @@ void sig_handler(int sig) {
     exit(EXIT_FAILURE);
 }
 
+int subtool0(int argc, char* argv[]);
 int gmove(int argc, char* argv[]);
 
 int print_usage(FILE *fp_help){
@@ -46,7 +47,7 @@ int print_usage(FILE *fp_help){
     fprintf(fp_help,"Usage: poregen <command> [options]\n\n");
     fprintf(fp_help,"command:\n");
     fprintf(fp_help,"         gmove         pore model using guppy move table\n");
-    fprintf(fp_help,"         subtool2      do something\n");
+    fprintf(fp_help,"         subtool0      not yet implemented\n");
     if(fp_help==stderr){
         return(EXIT_FAILURE);
     }
@@ -67,17 +68,17 @@ int main(int argc, char* argv[]){
 
     if(argc<2){
         return print_usage(stderr);
+    } else if (strcmp(argv[1],"subtool0")==0){
+        ret=subtool0(argc-1, argv+1);
     } else if (strcmp(argv[1],"gmove")==0){
         ret=gmove(argc-1, argv+1);
-    } else if (strcmp(argv[1],"subtool2")==0){
-        ret=gmove(argc-1, argv+1);
     } else if(strcmp(argv[1],"--version")==0 || strcmp(argv[1],"-V")==0){
-        fprintf(stdout,"xyztool %s\n",POREGEN_VERSION);
+        fprintf(stdout,"poregen %s\n",POREGEN_VERSION);
         exit(EXIT_SUCCESS);
     } else if(strcmp(argv[1],"--help")==0 || strcmp(argv[1],"-h")==0){
         return print_usage(stdout);
     } else{
-        fprintf(stderr,"[xyztool] Unrecognised command %s\n",argv[1]);
+        fprintf(stderr,"[poregen] Unrecognised command %s\n",argv[1]);
         return print_usage(stderr);
     }
 

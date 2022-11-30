@@ -1,6 +1,8 @@
 CC       = cc
+CXX      = g++
 CPPFLAGS += -I slow5lib/include/
-CFLAGS   += -g -Wall -O2  -std=c99
+CFLAGS   += -g -Wall -O2
+LANGFLAG  = -x c++ -std=c++11
 LDFLAGS  += $(LIBS) -lz -lm -lpthread
 BUILD_DIR = build
 
@@ -13,6 +15,7 @@ BINARY = poregen
 
 OBJ = $(BUILD_DIR)/main.o \
       $(BUILD_DIR)/poregen.o \
+      $(BUILD_DIR)/subtool0.o \
       $(BUILD_DIR)/gmove.o \
       $(BUILD_DIR)/thread.o \
 
@@ -24,19 +27,22 @@ endif
 .PHONY: clean distclean test
 
 $(BINARY): $(OBJ) slow5lib/lib/libslow5.a
-	$(CC) $(CFLAGS) $(OBJ) slow5lib/lib/libslow5.a $(LDFLAGS) -o $@
+	$(CXX) $(CFLAGS) $(OBJ) slow5lib/lib/libslow5.a $(LDFLAGS) -o $@
 
 $(BUILD_DIR)/main.o: src/main.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/poregen.o: src/poregen.c src/misc.h src/error.h src/poregen.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-$(BUILD_DIR)/gmove.o: src/gmove.c src/error.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+$(BUILD_DIR)/subtool0.o: src/subtool0.c src/error.h
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+
+$(BUILD_DIR)/gmove.o: src/gmove.cpp src/error.h src/ksort.h
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/thread.o: src/thread.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 # follow the main.o above and add more objects here if needed
 

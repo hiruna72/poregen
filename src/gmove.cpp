@@ -168,7 +168,7 @@ void delimit_kmer_files(std::map<std::string, FILE *> *kmer_file_pointer_array_p
 
 int gmove(int argc, char* argv[]) {
 
-    fprintf(stderr,"%d", get_log_level());
+//    fprintf(stderr,"%d", get_log_level());
 
     const char* optstring = "k:";
 
@@ -277,6 +277,16 @@ int gmove(int argc, char* argv[]) {
         fprintf(stderr,"Could not create the output dir %s.", output_dir);
         return EXIT_FAILURE;
     }
+    std::string kmer_dump = std::string(std::string(output_dir) + "/kmer_dump");
+    ret_create_dir = create_dir(kmer_dump.c_str());
+    if(ret_create_dir == -1){
+        fprintf(stderr,"Output directory %s is not empty. Please remove it or specify another directory.", kmer_dump.c_str());
+        return EXIT_FAILURE;
+    }
+    if(ret_create_dir == -2){
+        fprintf(stderr,"Could not create the output dir %s.", kmer_dump.c_str());
+        return EXIT_FAILURE;
+    }
 
     std::vector<std::string> kmers;
     generate_kmers(dna_set, "", num_dna_bases, opt.kmer_size, kmers);
@@ -286,7 +296,7 @@ int gmove(int argc, char* argv[]) {
     std::map<std::string,FILE*> kmer_file_pointer_array;
     for(int i=0;i<num_kmers;i++){
         FILE * kmer_output = NULL;
-        std::string output_path = std::string(output_dir) + "/" + kmers[i];
+        std::string output_path = kmer_dump + "/" + kmers[i];
         kmer_output = fopen(output_path.c_str(), "w");
         if (kmer_output == NULL){
             fprintf(stderr,"Error in opening %dth kmer-file %s\n", i, output_path.c_str());
@@ -295,6 +305,11 @@ int gmove(int argc, char* argv[]) {
         fprintf(kmer_output,"%.8f,", 0.0);
         kmer_file_pointer_array[kmers[i]] = kmer_output;
     }
+    std::map<std::string,uint64_t> kmer_frequency_map;
+    for(int i=0;i<num_kmers;i++){
+        kmer_frequency_map[kmers[i]] = 0;
+    }
+
 
     slow5_file_t *sp = slow5_open(slow5file,"r");
     if(sp==NULL){
@@ -360,7 +375,7 @@ int gmove(int argc, char* argv[]) {
 //                printf("%f ",pA);
         }
         //calculate medmad
-        if(signal_scale == 1){
+        if(signal_scale == medmad_scale){
             double read_median = calc_median(raw_signal.data(), len_raw_signal);
             if(read_median == NAN){
                 continue;
@@ -418,6 +433,7 @@ int gmove(int argc, char* argv[]) {
                 }
                 seq_start++;
                 start_move_idx = move_idx;
+                kmer_frequency_map[kmer] = kmer_frequency_map[kmer] + 1;
             }
         }
         delimit_kmer_files(&kmer_file_pointer_array, num_kmers, kmers);
@@ -430,6 +446,16 @@ int gmove(int argc, char* argv[]) {
     fclose(basecall_fp);
     if (line){
         free(line);
+    }
+
+    std::string kmer_freq_file_name = std::string(std::string(output_dir)+"/kmer_freq.txt");
+    FILE* kmer_freq_file = fopen(kmer_freq_file_name.c_str(), "w");
+    if (kmer_freq_file == NULL){
+        fprintf(stderr,"Error in opening %s\n", kmer_freq_file_name.c_str());
+        exit(EXIT_FAILURE);
+    }
+    for(int i=0;i<num_kmers;i++){
+        fprintf(kmer_freq_file, "%s\t%" PRIu64 "\n", kmers[i].c_str(), kmer_frequency_map[kmers[i]]);
     }
 
     return 0;

@@ -212,6 +212,11 @@ void init_opt(opt_t* opt) {
     opt->batch_size_bytes = 20*1000*1000;
     opt->num_thread = 8;
     opt->kmer_size = 6;
+    opt->signal_print_margin = 0;
+    opt->sample_limit = KMER_SAMPLE_LIMIT;
+    opt->file_limit = KMERS_TO_DUMP_LIMIT;
+    opt->index_start = KMER_INDEX_START;
+    opt->index_end = opt->index_start + KMERS_TO_DUMP_LIMIT - 1;
     opt->signal_scale = medmad_scale;
     opt->debug_break=-1;
 
@@ -225,3 +230,26 @@ enum poregen_log_level_opt get_log_level(){
 void set_log_level(enum poregen_log_level_opt level){
     _log_level = level;
 }
+
+void generate_kmers(char set[], std::string prefix, int num_bases, int kmer_length, std::vector<std::string>& kmers){
+    // Base case: k is 0,
+    // print prefix
+    if (kmer_length == 0){
+        //        std::cout << (prefix) << std::endl;
+        kmers.push_back(prefix);
+        return;
+    }
+    // One by one add all characters
+    // from set and recursively
+    // call for k equals to k-1
+    for (int i = 0; i < num_bases; i++){
+        std::string newPrefix;
+        // Next character of input added
+        newPrefix = prefix + set[i];
+        // k is decreased, because
+        // we have added a new character
+        generate_kmers(set, newPrefix, num_bases, kmer_length - 1, kmers);
+    }
+}
+
+

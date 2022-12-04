@@ -41,6 +41,7 @@ void sig_handler(int sig) {
 
 int subtool0(int argc, char* argv[]);
 int gmove(int argc, char* argv[]);
+int kmer_freq(int argc, char* argv[]);
 
 int print_usage(FILE *fp_help){
 
@@ -72,6 +73,8 @@ int main(int argc, char* argv[]){
         ret=subtool0(argc-1, argv+1);
     } else if (strcmp(argv[1],"gmove")==0){
         ret=gmove(argc-1, argv+1);
+    } else if (strcmp(argv[1],"kmer_freq")==0){
+        ret=kmer_freq(argc-1, argv+1);
     } else if(strcmp(argv[1],"--version")==0 || strcmp(argv[1],"-V")==0){
         fprintf(stdout,"poregen %s\n",POREGEN_VERSION);
         exit(EXIT_SUCCESS);

@@ -1,7 +1,8 @@
 CC       = cc
 CXX      = g++
 CPPFLAGS += -I slow5lib/include/
-CFLAGS   += -g -Wall -O2
+#CFLAGS   += -g -Wall -O2
+CFLAGS   += -g -Wall
 LANGFLAG  = -x c++ -std=c++11
 LDFLAGS  += $(LIBS) -lz -lm -lpthread
 BUILD_DIR = build
@@ -17,6 +18,7 @@ OBJ = $(BUILD_DIR)/main.o \
       $(BUILD_DIR)/poregen.o \
       $(BUILD_DIR)/subtool0.o \
       $(BUILD_DIR)/gmove.o \
+      $(BUILD_DIR)/kmer_freq.o \
       $(BUILD_DIR)/thread.o \
 
 ifdef asan
@@ -32,13 +34,16 @@ $(BINARY): $(OBJ) slow5lib/lib/libslow5.a
 $(BUILD_DIR)/main.o: src/main.c
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-$(BUILD_DIR)/poregen.o: src/poregen.c src/misc.h src/error.h src/poregen.h
+$(BUILD_DIR)/poregen.o: src/poregen.cpp src/misc.h src/error.h src/poregen.h
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/subtool0.o: src/subtool0.c src/error.h
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/gmove.o: src/gmove.cpp src/error.h src/ksort.h
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+
+$(BUILD_DIR)/kmer_freq.o: src/kmer_freq.cpp src/error.h
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/thread.o: src/thread.c

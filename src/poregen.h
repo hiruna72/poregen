@@ -7,6 +7,9 @@
 
 #include <stdint.h>
 #include <slow5/slow5.h>
+#include <string>
+#include <vector>
+#include <inttypes.h>
 
 #define POREGEN_VERSION "0.1.0"
 
@@ -24,6 +27,14 @@
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold
 
+#define TO_PICOAMPS(RAW_VAL,DIGITISATION,OFFSET,RANGE) (((RAW_VAL)+(OFFSET))*((RANGE)/(DIGITISATION)))
+#define PROGRESS_BATCH_SIZE 10000
+#define MAX_MIN_THRESHOLD 2.0
+#define KMER_SAMPLE_LIMIT 100
+#define KMERS_TO_DUMP_LIMIT 500
+#define KMER_INDEX_START 1
+#define NUM_DNA_BASES 4
+
 enum signal_scaling{ noscale, medmad_scale };
 
 /* user specified options */
@@ -34,7 +45,12 @@ typedef struct {
     int64_t batch_size_bytes;   //max bytes loaded at once: B
 
     int32_t num_thread; //t
-    int32_t kmer_size; //k
+    uint32_t kmer_size; //k
+    uint32_t signal_print_margin;
+    uint32_t sample_limit;
+    uint32_t file_limit;
+    uint32_t index_start;
+    uint32_t index_end;
     enum signal_scaling signal_scale;
     int32_t debug_break;
 
@@ -147,4 +163,6 @@ void free_db(db_t* db);
 /* free the core data structure */
 void free_core(core_t* core,opt_t opt);
 
+// introduce new functions here
+void generate_kmers(char set[], std::string prefix, int num_bases, int kmer_length, std::vector<std::string>& kmers);
 #endif

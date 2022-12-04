@@ -126,8 +126,10 @@ int kmer_freq(int argc, char* argv[]) {
     std::vector<std::string> kmers;
     generate_kmers(dna_set, "", NUM_DNA_BASES, opt.kmer_size, kmers);
     std::map<std::string, uint64_t> kmer_frequency_map;
+    uint32_t num_kmers = kmers.size();
+    fprintf(stderr,"num_kmers: %d\n", num_kmers);
 
-    for(uint32_t i=opt.index_start-1;i<opt.index_end;i++){
+    for(uint32_t i=0;i<num_kmers;i++){
         kmer_frequency_map[kmers[i]] = 0;
     }
 

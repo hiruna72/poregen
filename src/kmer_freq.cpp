@@ -25,7 +25,7 @@ static struct option long_options[] = {
 
 
 static inline void print_help_msg(FILE *fp_help, opt_t opt){
-    fprintf(fp_help,"Usage: poregen kmer_freq reads.fastq\n");
+    fprintf(fp_help,"Usage: poregen kmer_freq kmer_size reads.fastq\n");
     fprintf(fp_help,"\nbasic options:\n");
     fprintf(fp_help,"   --sort INT                 sort based on frequency (0-no sorting, 1-ascend, 2-descend) [0] \n");
     fprintf(fp_help,"   -o FILE                    output to file [stdout]\n");

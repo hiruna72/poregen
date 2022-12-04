@@ -48,6 +48,7 @@ int print_usage(FILE *fp_help){
     fprintf(fp_help,"Usage: poregen <command> [options]\n\n");
     fprintf(fp_help,"command:\n");
     fprintf(fp_help,"         gmove         pore model using guppy move table\n");
+    fprintf(fp_help,"         kmer_freq     calculate kmer frequency in a fastq file\n");
     fprintf(fp_help,"         subtool0      not yet implemented\n");
     if(fp_help==stderr){
         return(EXIT_FAILURE);

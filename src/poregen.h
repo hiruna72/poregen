@@ -32,6 +32,7 @@
 #define MAX_MIN_THRESHOLD 2.0
 #define KMER_SAMPLE_LIMIT 100
 #define KMERS_TO_DUMP_LIMIT 500
+#define SIGNAL_PRINT_MARGIN 0
 #define KMER_INDEX_START 1
 #define NUM_DNA_BASES 4
 
@@ -46,6 +47,7 @@ typedef struct {
 
     int32_t num_thread; //t
     uint32_t kmer_size; //k
+    uint32_t move_start_offset; //m
     uint32_t signal_print_margin;
     uint32_t sample_limit;
     uint32_t file_limit;

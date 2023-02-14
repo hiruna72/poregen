@@ -1,6 +1,7 @@
 /* @file  kmer_freq.c
 **
 ** @@ Hiruna Samarakoon - hiruna72@gmail.com
+** ./poregen kmer_freq 9 pass.fastq | grep  -e $'.*\t0' | wc
 ******************************************************************************/
 #include "poregen.h"
 #include "error.h"
@@ -16,11 +17,12 @@
 #include <algorithm>
 
 static struct option long_options[] = {
-    {"sort", required_argument, 0, 0},             //0
-    {"help", no_argument, 0, 'h'},                 //1
-    {"version", no_argument, 0, 'V'},              //2
-    {"output",required_argument, 0, 'o'},          //3 output to a file [stdout]
-    {"debug-break",required_argument, 0, 0},       //4 break after processing the first batch (used for debugging)
+    {"sort", required_argument, 0, 0},               //0
+    {"print_absent_kmers", required_argument, 0, 0}, //1
+    {"help", no_argument, 0, 'h'},                   //2
+    {"version", no_argument, 0, 'V'},                //3
+    {"output",required_argument, 0, 'o'},            //4 output to a file [stdout]
+    {"debug-break",required_argument, 0, 0},         //5 break after processing the first batch (used for debugging)
     {0, 0, 0, 0}};
 
 
@@ -28,6 +30,7 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"Usage: poregen kmer_freq kmer_size reads.fastq\n");
     fprintf(fp_help,"\nbasic options:\n");
     fprintf(fp_help,"   --sort INT                 sort based on frequency (0-no sorting, 1-ascend, 2-descend) [0] \n");
+    fprintf(fp_help,"   --print_absent_kmers INT   print kmers with 0 frequency (0-do not print, 1-print) [1] \n");
     fprintf(fp_help,"   -o FILE                    output to file [stdout]\n");
     fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
     fprintf(fp_help,"   --version                  print version\n");
@@ -73,6 +76,7 @@ int kmer_freq(int argc, char* argv[]) {
 
     char *fastq_file = NULL;
     int flag_sort_freq = 0;
+    int flag_print_absent_kmers = 1;
     char dna_set[] = {'A', 'C', 'G', 'T'};
 
     FILE *fp_help = stderr;
@@ -92,11 +96,17 @@ int kmer_freq(int argc, char* argv[]) {
             fp_help = stdout;
             fp_help = stdout;
         } else if(c == 0 && longindex == 0){ //debug break
-            if(flag_sort_freq != 0 && flag_sort_freq != 1 && flag_sort_freq != 2){
+            if(atoi(optarg) != 0 && atoi(optarg) != 1 && atoi(optarg) != 2){
                 ERROR("sort argument must be 0,1 or 2 You entered %d", atoi(optarg));
                 exit(EXIT_FAILURE);
             }
             flag_sort_freq = atoi(optarg);
+        } else if(c == 0 && longindex == 1){ //debug break
+            if(atoi(optarg) != 0 && atoi(optarg) != 1){
+                ERROR("print_absent_kmers flag must be 0 or 1 You entered %d", atoi(optarg));
+                exit(EXIT_FAILURE);
+            }
+            flag_print_absent_kmers = atoi(optarg);
         } else if(c == 0 && longindex == 4){ //debug break
             opt.debug_break = atoi(optarg);
         }
@@ -189,6 +199,9 @@ int kmer_freq(int argc, char* argv[]) {
 
     // print the vector
     for (auto const &pair: vec) {
+        if(flag_print_absent_kmers == 0 && pair.second == 0){
+            continue;
+        }
         fprintf(stdout, "%s\t%" PRIu64 "\n", pair.first.c_str(), pair.second);
     }
 

@@ -474,7 +474,7 @@ int gmove(int argc, char* argv[]) {
         int move_count = 0;
         size_t move_idx=0;
         size_t start_move_idx = 0;
-        while(move_count <= opt.move_start_offset){
+        while(move_count < opt.move_start_offset){
             if(move_seq[move_idx]=='1'){
                 move_count++;
                 start_move_idx = move_idx;

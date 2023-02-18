@@ -35,6 +35,7 @@
 #define SIGNAL_PRINT_MARGIN 0
 #define KMER_INDEX_START 1
 #define NUM_DNA_BASES 4
+#define DEFAULT_KMER_SIZE 9
 
 enum signal_scaling{ noscale, medmad_scale };
 
@@ -55,6 +56,7 @@ typedef struct {
     uint32_t index_end;
     enum signal_scaling signal_scale;
     int32_t debug_break;
+    int32_t use_paf_format;
 
 } opt_t;
 

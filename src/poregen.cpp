@@ -211,7 +211,7 @@ void init_opt(opt_t* opt) {
     opt->batch_size = 512;
     opt->batch_size_bytes = 20*1000*1000;
     opt->num_thread = 8;
-    opt->kmer_size = 6;
+    opt->kmer_size = DEFAULT_KMER_SIZE;
     opt->move_start_offset = opt->kmer_size - 1;
     opt->signal_print_margin = SIGNAL_PRINT_MARGIN;
     opt->sample_limit = KMER_SAMPLE_LIMIT;
@@ -220,7 +220,7 @@ void init_opt(opt_t* opt) {
     opt->index_end = opt->index_start + KMERS_TO_DUMP_LIMIT - 1;
     opt->signal_scale = medmad_scale;
     opt->debug_break=-1;
-
+    opt->use_paf_format = 0;
 }
 
 

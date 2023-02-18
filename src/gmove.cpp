@@ -471,7 +471,7 @@ int gmove(int argc, char* argv[]) {
             fprintf(stderr,"\t%d", fastq_len);
             continue;
         }
-        int move_count = 0;
+        uint32_t move_count = 0;
         size_t move_idx=0;
         size_t start_move_idx = 0;
         while(move_count < opt.move_start_offset){
@@ -510,7 +510,6 @@ int gmove(int argc, char* argv[]) {
                 } else{
                     raw_end_local = raw_end_local + opt.signal_print_margin;
                 }
-
 //                fprintf(stdout,"%d\t%d\n", raw_start_local, raw_end_local);
 
                 std::vector<double> raw_signal_local(raw_signal.begin()+raw_start_local,raw_signal.begin()+raw_end_local);

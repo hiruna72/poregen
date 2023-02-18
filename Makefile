@@ -1,11 +1,13 @@
 CC       = cc
 CXX      = g++
-CPPFLAGS += -I slow5lib/include/
 #CFLAGS   += -g -Wall -O2
 CFLAGS   += -g -Wall
 LANGFLAG  = -x c++ -std=c++11
 LDFLAGS  += $(LIBS) -lz -lm -lpthread
 BUILD_DIR = build
+CPPFLAGS += -I slow5lib/include/ -I $(BUILD_DIR)/htslib
+
+HTS_VERSION = 1.9
 
 ifeq ($(zstd),1)
 LDFLAGS		+= -lzstd
@@ -19,6 +21,7 @@ OBJ = $(BUILD_DIR)/main.o \
       $(BUILD_DIR)/subtool0.o \
       $(BUILD_DIR)/gmove.o \
       $(BUILD_DIR)/kmer_freq.o \
+      $(BUILD_DIR)/sigb_formater.o \
       $(BUILD_DIR)/thread.o \
 
 ifdef asan
@@ -28,8 +31,8 @@ endif
 
 .PHONY: clean distclean test
 
-$(BINARY): $(OBJ) slow5lib/lib/libslow5.a
-	$(CXX) $(CFLAGS) $(OBJ) slow5lib/lib/libslow5.a $(LDFLAGS) -o $@
+$(BINARY): $(OBJ) slow5lib/lib/libslow5.a $(BUILD_DIR)/lib/libhts.a
+	$(CXX) $(CFLAGS) $(OBJ) slow5lib/lib/libslow5.a $(BUILD_DIR)/lib/libhts.a $(LDFLAGS) -o $@
 
 $(BUILD_DIR)/main.o: src/main.c
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
@@ -46,6 +49,9 @@ $(BUILD_DIR)/gmove.o: src/gmove.cpp src/error.h src/ksort.h
 $(BUILD_DIR)/kmer_freq.o: src/kmer_freq.cpp src/error.h
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
+$(BUILD_DIR)/sigb_formater.o: src/sigb_formater.cpp src/error.h
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+
 $(BUILD_DIR)/thread.o: src/thread.c
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
@@ -55,6 +61,20 @@ all:$(BINARY)
 
 slow5lib/lib/libslow5.a:
 	$(MAKE) -C slow5lib zstd=$(zstd) no_simd=$(no_simd) zstd_local=$(zstd_local) lib/libslow5.a
+
+$(BUILD_DIR)/lib/libhts.a:
+	@if command -v curl; then \
+		curl -o $(BUILD_DIR)/htslib.tar.bz2 -L https://github.com/samtools/htslib/releases/download/$(HTS_VERSION)/htslib-$(HTS_VERSION).tar.bz2; \
+	else \
+		wget -O $(BUILD_DIR)/htslib.tar.bz2 https://github.com/samtools/htslib/releases/download/$(HTS_VERSION)/htslib-$(HTS_VERSION).tar.bz2; \
+	fi
+	tar -xf $(BUILD_DIR)/htslib.tar.bz2 -C $(BUILD_DIR)
+	mv $(BUILD_DIR)/htslib-$(HTS_VERSION) $(BUILD_DIR)/htslib
+	rm -f $(BUILD_DIR)/htslib.tar.bz2
+	cd $(BUILD_DIR)/htslib && \
+	./configure --prefix=`pwd`/../ --enable-bz2=no --enable-lzma=no --with-libdeflate=no --enable-libcurl=no  --enable-gcs=no --enable-s3=no && \
+	make -j8 && \
+	make install
 
 clean:
 	rm -rf $(BINARY) $(BUILD_DIR)/*.o

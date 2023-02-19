@@ -35,25 +35,25 @@ $(BINARY): $(OBJ) slow5lib/lib/libslow5.a $(BUILD_DIR)/lib/libhts.a
 	$(CXX) $(CFLAGS) $(OBJ) slow5lib/lib/libslow5.a $(BUILD_DIR)/lib/libhts.a $(LDFLAGS) -o $@
 
 $(BUILD_DIR)/main.o: src/main.c
-	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CXX) $(LANGFLAG) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/poregen.o: src/poregen.cpp src/misc.h src/error.h src/poregen.h
-	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CXX) $(LANGFLAG) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/subtool0.o: src/subtool0.c src/error.h
-	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CXX) $(LANGFLAG) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/gmove.o: src/gmove.cpp src/error.h src/ksort.h
-	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CXX) $(LANGFLAG) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/kmer_freq.o: src/kmer_freq.cpp src/error.h
-	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CXX) $(LANGFLAG) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/sigb_formater.o: src/sigb_formater.cpp src/error.h $(BUILD_DIR)/lib/libhts.a
-	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CXX) $(LANGFLAG) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/thread.o: src/thread.c
-	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+	$(CXX) $(LANGFLAG) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 # follow the main.o above and add more objects here if needed
 

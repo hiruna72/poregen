@@ -18,16 +18,17 @@
 #define EXPECTED_STRIDE 5
 
 static struct option long_options[] = {
-    {"kmer", required_argument, 0, 'k'},           //0 kmer size [9]
-    {"", no_argument, 0, 'c'},                     //1 optional paf format
-    {"threads", required_argument, 0, 't'},        //2 number of threads [8]
-    {"batchsize", required_argument, 0, 'K'},      //3 batchsize - number of reads loaded at once [512]
-    {"max-bytes", required_argument, 0, 'B'},      //4 batchsize - number of bytes loaded at once
-    {"verbose", required_argument, 0, 'v'},        //5 verbosity level [1]
-    {"help", no_argument, 0, 'h'},                 //6
-    {"version", no_argument, 0, 'V'},              //7
-    {"output",required_argument, 0, 'o'},          //8 output to a file [stdout]
-    {"debug-break",required_argument, 0, 0},       //9 break after processing the first batch (used for debugging)
+    {"kmer", required_argument, 0, 'k'},                //0 kmer size [9]
+    {"sig_move_offset", required_argument, 0, 'm'},     //1 signal move offset  [9]
+    {"", no_argument, 0, 'c'},                          //2 optional paf format
+    {"threads", required_argument, 0, 't'},             //3 number of threads [8]
+    {"batchsize", required_argument, 0, 'K'},           //4 batchsize - number of reads loaded at once [512]
+    {"max-bytes", required_argument, 0, 'B'},           //5 batchsize - number of bytes loaded at once
+    {"verbose", required_argument, 0, 'v'},             //6 verbosity level [1]
+    {"help", no_argument, 0, 'h'},                      //7
+    {"version", no_argument, 0, 'V'},                   //8
+    {"output",required_argument, 0, 'o'},               //9 output to a file [stdout]
+    {"debug-break",required_argument, 0, 0},            //10 break after processing the first batch (used for debugging)
     {0, 0, 0, 0}};
 
 
@@ -35,6 +36,7 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"Usage: poregen sigbformater basecalled.SAM/BAM\n");
     fprintf(fp_help,"\nbasic options:\n");
     fprintf(fp_help,"   -k, --kmer                 kmer size [%d]\n",opt.kmer_size);
+    fprintf(fp_help,"   -m, --sig_move_offset      signal move offset [%d]\n",opt.move_start_offset);
     fprintf(fp_help,"   -c                         write move table in paf format\n");
     fprintf(fp_help,"   -t INT                     number of processing threads [%d]\n",opt.num_thread);
     fprintf(fp_help,"   -K INT                     batch size (max number of reads loaded at once) [%d]\n",opt.batch_size);
@@ -78,7 +80,7 @@ int sigb_formater(int argc, char* argv[]) {
 
     //signal(SIGSEGV, sig_handler);
 
-    const char* optstring = "ct:B:K:v:o:hV";
+    const char* optstring = "k:m:ct:B:K:v:o:hV";
 
     int longindex = 0;
     int32_t c = -1;
@@ -95,6 +97,8 @@ int sigb_formater(int argc, char* argv[]) {
 
         if (c == 'k') {
             opt.kmer_size = atoi(optarg);
+        } else if (c == 'm') {
+            opt.move_start_offset = atoi(optarg);
         } else if (c == 'c') {
             opt.use_paf_format = 1;
         } else if (c == 'B') {
@@ -200,7 +204,7 @@ int sigb_formater(int argc, char* argv[]) {
             if(opt.use_paf_format == 0){
                 uint32_t move_count = 0;
                 uint32_t i = 1;
-                while(move_count < opt.kmer_size){
+                while(move_count < opt.move_start_offset){
                     int8_t value = bam_auxB2i(mv_array, i);
                     if(value == 1){
                         move_count++;
@@ -233,13 +237,38 @@ int sigb_formater(int argc, char* argv[]) {
 
             } else{
                 fprintf(stderr,"paf is not yet implemented");
-            }
+                fprintf(stdout, "%s\t", aln->data); //1
+                fprintf(stdout, "%" PRIu64 "\t", ns); //2
+                fprintf(stdout, "%" PRIu64 "\t", ts + opt.move_start_offset*EXPECTED_STRIDE); //3
+                fprintf(stdout, "%" PRIu64 "\t", ns); //4
+                fprintf(stdout, "%s\t", "+"); //5
+                fprintf(stdout, "%s\t", aln->data); //6
+                fprintf(stdout, "%" PRIu32 "\t", len_seq - opt.kmer_size); //7
+                uint32_t kmer_idx = 0;
+                fprintf(stdout, "%" PRIu32 "\t", kmer_idx); //8
+                fprintf(stdout, "%" PRIu32 "\t", len_seq - opt.kmer_size); //9
+                fprintf(stdout, "%s\t", "*"); //10
+                fprintf(stdout, "%" PRIu32 "\t", len_seq - opt.kmer_size); //11
+                fprintf(stdout, "%s\t", "255"); //12
+                fprintf(stdout, "%s", "ss:Z:"); //ss
 
+                uint32_t i = 2;
+                uint32_t start_idx = 1;
+                for(; i<len_mv; i++){
+                    int8_t value = bam_auxB2i(mv_array, i);
+                    LOG_DEBUG("%d", value);
+                    if(value == 1){
+                        fprintf(stdout, "%" PRIu32 ",", (i-start_idx)*EXPECTED_STRIDE); //ss
+                        start_idx = i;
+                    } else if(i == len_mv-1){
+                        fprintf(stdout, "%" PRIu32 ",", (i-start_idx)*EXPECTED_STRIDE+EXPECTED_STRIDE); //ss
+                    }
+                }
+            }
         } else{
             ERROR("mv tag specification is incorrect%s", "");
             return -1;
         }
-
     }
 
     bam_destroy1(aln);

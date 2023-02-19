@@ -49,7 +49,7 @@ $(BUILD_DIR)/gmove.o: src/gmove.cpp src/error.h src/ksort.h
 $(BUILD_DIR)/kmer_freq.o: src/kmer_freq.cpp src/error.h
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-$(BUILD_DIR)/sigb_formater.o: src/sigb_formater.cpp src/error.h
+$(BUILD_DIR)/sigb_formater.o: src/sigb_formater.cpp src/error.h $(BUILD_DIR)/lib/libhts.a
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/thread.o: src/thread.c

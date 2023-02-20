@@ -132,6 +132,11 @@ int sigb_formater(int argc, char* argv[]) {
         }
     }
 
+    if(opt.kmer_size < opt.move_start_offset){
+        ERROR("signal move offset value must not be larger than the kmer length%s", "")
+        return -1;
+    }
+
     // No arguments given
     if (argc - optind != 1 || fp_help == stdout) {
         print_help_msg(fp_help, opt);
@@ -151,6 +156,8 @@ int sigb_formater(int argc, char* argv[]) {
     }
 
     fprintf(stderr, "bam_file : %s\n", bam_file_name);
+    fprintf(stderr, "kmer length : %" PRIu32 "\n", opt.kmer_size);
+    fprintf(stderr, "signal move offset : %" PRIu32 "\n", opt.move_start_offset);
 
     htsFile* bam_fp = sam_open(bam_file_name, "r"); //open bam file
     bam_hdr_t* bam_hdr = sam_hdr_read(bam_fp);
@@ -159,6 +166,7 @@ int sigb_formater(int argc, char* argv[]) {
     while(sam_read1(bam_fp, bam_hdr, aln) > 0){
         LOG_DEBUG("%s\n", aln->data);
         uint32_t len_seq = aln->core.l_qseq; //length of the read.
+        len_seq = len_seq - opt.kmer_size + 1; //to get the number of kmers
 
         const char tag_ns[] = {'n', 's'};
         const uint8_t * ns_ptr = bam_aux_get(aln, tag_ns);
@@ -218,7 +226,7 @@ int sigb_formater(int argc, char* argv[]) {
                     int8_t value = bam_auxB2i(mv_array, i);
                     LOG_DEBUG("%d", value);
 
-                    if(value == 1 || i == len_mv-1){
+                    if(len_seq > 0 && (value == 1 || i == len_mv-1)){
                         fprintf(stdout, "%s\t", aln->data);
                         fprintf(stdout, "%" PRIu32 "\t", kmer_idx);
                         fprintf(stdout, "%" PRId8 "\t", i-1);
@@ -239,29 +247,47 @@ int sigb_formater(int argc, char* argv[]) {
                 fprintf(stderr,"paf is not yet implemented");
                 fprintf(stdout, "%s\t", aln->data); //1
                 fprintf(stdout, "%" PRIu64 "\t", ns); //2
-                fprintf(stdout, "%" PRIu64 "\t", ts + opt.move_start_offset*EXPECTED_STRIDE); //3
+
+
+                uint32_t move_count = 0;
+                uint32_t i = 1;
+                uint32_t start_idx;
+                while(move_count < opt.move_start_offset){
+                    int8_t value = bam_auxB2i(mv_array, i);
+                    if(value == 1){
+                        move_count++;
+                        start_idx = i;
+                    }
+                    i++;
+                }
+                fprintf(stdout, "%" PRIu64 "\t", ts + (i-2) * EXPECTED_STRIDE); //3
                 fprintf(stdout, "%" PRIu64 "\t", ns); //4
                 fprintf(stdout, "%s\t", "+"); //5
                 fprintf(stdout, "%s\t", aln->data); //6
-                fprintf(stdout, "%" PRIu32 "\t", len_seq - opt.kmer_size); //7
+                fprintf(stdout, "%" PRIu32 "\t", len_seq); //7
                 uint32_t kmer_idx = 0;
                 fprintf(stdout, "%" PRIu32 "\t", kmer_idx); //8
-                fprintf(stdout, "%" PRIu32 "\t", len_seq - opt.kmer_size); //9
+                fprintf(stdout, "%" PRIu32 "\t", len_seq); //9
                 fprintf(stdout, "%s\t", "*"); //10
-                fprintf(stdout, "%" PRIu32 "\t", len_seq - opt.kmer_size); //11
+                fprintf(stdout, "%" PRIu32 "\t", len_seq); //11
                 fprintf(stdout, "%s\t", "255"); //12
                 fprintf(stdout, "%s", "ss:Z:"); //ss
 
-                uint32_t i = 2;
-                uint32_t start_idx = 1;
+                int flag_first_value = 1;
                 for(; i<len_mv; i++){
                     int8_t value = bam_auxB2i(mv_array, i);
                     LOG_DEBUG("%d", value);
-                    if(value == 1){
-                        fprintf(stdout, "%" PRIu32 ",", (i-start_idx)*EXPECTED_STRIDE); //ss
+                    if(len_seq > 0 && value == 1){
+                        if(flag_first_value == 0){
+                            fprintf(stdout, ",%" PRIu32 "", (i-start_idx)*EXPECTED_STRIDE); //ss
+                        } else{
+                            fprintf(stdout, "%" PRIu32 "", (i-start_idx)*EXPECTED_STRIDE); //ss
+                            flag_first_value = 0;
+                        }
                         start_idx = i;
-                    } else if(i == len_mv-1){
-                        fprintf(stdout, "%" PRIu32 ",", (i-start_idx)*EXPECTED_STRIDE+EXPECTED_STRIDE); //ss
+                        len_seq--;
+                    } else if(len_seq > 0 && i == len_mv-1){
+                        fprintf(stdout, ",%" PRIu32 "", (i-start_idx)*EXPECTED_STRIDE+EXPECTED_STRIDE); //ss
                     }
                 }
             }

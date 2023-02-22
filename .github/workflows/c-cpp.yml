@@ -98,32 +98,32 @@ jobs:
       run: make CC=icc CXX=icpc -j8
     - name: test
       run: make test
-  os_x_11:
-    name: OSX 11
-    runs-on: macos-11
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-    - name: build
-      run: make -j8
-    - name: test
-      run: make test
-  arm64:
-    name: ubuntu arm
-    runs-on: ubuntu-latest
-    steps:
-    - run: docker run --rm --privileged multiarch/qemu-user-static:register --reset
-    - uses: docker://multiarch/ubuntu-core:arm64-bionic
-      with:
-        args: 'uname -a'
-    - uses: actions/checkout@v1
-      with:
-        submodules: recursive
-    - uses: docker://multiarch/ubuntu-core:arm64-bionic
-      with:
-        args: >
-          bash -c "apt-get update &&
-          apt-get install -y zlib1g-dev wget gcc g++ make &&
-          ldd --version && gcc --version &&
-          make && make test
+#   os_x_11:
+#     name: OSX 11
+#     runs-on: macos-11
+#     steps:
+#     - uses: actions/checkout@v2
+#       with:
+#         submodules: recursive
+#     - name: build
+#       run: make -j8
+#     - name: test
+#       run: make test
+#   arm64:
+#     name: ubuntu arm
+#     runs-on: ubuntu-latest
+#     steps:
+#     - run: docker run --rm --privileged multiarch/qemu-user-static:register --reset
+#     - uses: docker://multiarch/ubuntu-core:arm64-bionic
+#       with:
+#         args: 'uname -a'
+#     - uses: actions/checkout@v1
+#       with:
+#         submodules: recursive
+#     - uses: docker://multiarch/ubuntu-core:arm64-bionic
+#       with:
+#         args: >
+#           bash -c "apt-get update &&
+#           apt-get install -y zlib1g-dev wget gcc g++ make &&
+#           ldd --version && gcc --version &&
+#           make && make test

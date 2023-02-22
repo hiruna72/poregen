@@ -18,7 +18,7 @@
 #define EXPECTED_STRIDE 5
 
 static struct option long_options[] = {
-    {"kmer", required_argument, 0, 'k'},                //0 kmer size [9]
+    {"kmer_length", required_argument, 0, 'k'},         //0 kmer length [9]
     {"sig_move_offset", required_argument, 0, 'm'},     //1 signal move offset  [9]
     {"", no_argument, 0, 'c'},                          //2 optional paf format
     {"threads", required_argument, 0, 't'},             //3 number of threads [8]
@@ -35,7 +35,7 @@ static struct option long_options[] = {
 static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"Usage: poregen sigbformater basecalled.SAM/BAM\n");
     fprintf(fp_help,"\nbasic options:\n");
-    fprintf(fp_help,"   -k, --kmer                 kmer size [%d]\n",opt.kmer_size);
+    fprintf(fp_help,"   -k, --kmer_length          kmer length [%d]\n",opt.kmer_size);
     fprintf(fp_help,"   -m, --sig_move_offset      signal move offset [%d]\n",opt.move_start_offset);
     fprintf(fp_help,"   -c                         write move table in paf format\n");
 //    fprintf(fp_help,"   -t INT                     number of processing threads [%d]\n",opt.num_thread);

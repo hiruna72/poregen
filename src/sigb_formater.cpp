@@ -38,9 +38,9 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"   -k, --kmer                 kmer size [%d]\n",opt.kmer_size);
     fprintf(fp_help,"   -m, --sig_move_offset      signal move offset [%d]\n",opt.move_start_offset);
     fprintf(fp_help,"   -c                         write move table in paf format\n");
-    fprintf(fp_help,"   -t INT                     number of processing threads [%d]\n",opt.num_thread);
-    fprintf(fp_help,"   -K INT                     batch size (max number of reads loaded at once) [%d]\n",opt.batch_size);
-    fprintf(fp_help,"   -B FLOAT[K/M/G]            max number of bytes loaded at once [%.1fM]\n",opt.batch_size_bytes/(float)(1000*1000));
+//    fprintf(fp_help,"   -t INT                     number of processing threads [%d]\n",opt.num_thread);
+//    fprintf(fp_help,"   -K INT                     batch size (max number of reads loaded at once) [%d]\n",opt.batch_size);
+//    fprintf(fp_help,"   -B FLOAT[K/M/G]            max number of bytes loaded at once [%.1fM]\n",opt.batch_size_bytes/(float)(1000*1000));
     fprintf(fp_help,"   -h                         help\n");
     fprintf(fp_help,"   -o FILE                    output to file [stdout]\n");
     fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
@@ -122,6 +122,9 @@ int sigb_formater(int argc, char* argv[]) {
         } else if (c=='v'){
             int v = atoi(optarg);
             set_log_level((enum poregen_log_level_opt)v);
+        } else if (c=='o'){
+            opt.arg_fname_out = optarg;
+            break;
         } else if (c=='V'){
             fprintf(stdout,"subtool0 %s\n",POREGEN_VERSION);
             exit(EXIT_SUCCESS);
@@ -132,6 +135,15 @@ int sigb_formater(int argc, char* argv[]) {
         }
     }
 
+
+    if(opt.kmer_size < 1){
+        ERROR("kmer length must be non zero%s", "")
+        return -1;
+    }
+    if(opt.move_start_offset < 1){
+        ERROR("signal move offset value must be non zero%s", "")
+        return -1;
+    }
     if(opt.kmer_size < opt.move_start_offset){
         ERROR("signal move offset value must not be larger than the kmer length%s", "")
         return -1;
@@ -143,7 +155,7 @@ int sigb_formater(int argc, char* argv[]) {
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
         }
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
     bam_file_name = argv[optind];
 
@@ -152,16 +164,50 @@ int sigb_formater(int argc, char* argv[]) {
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
         }
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
+
     }
 
     fprintf(stderr, "bam_file : %s\n", bam_file_name);
     fprintf(stderr, "kmer length : %" PRIu32 "\n", opt.kmer_size);
     fprintf(stderr, "signal move offset : %" PRIu32 "\n", opt.move_start_offset);
+    if(opt.use_paf_format){
+        fprintf(stderr, "output format : %s\n", "paf");
+    } else{
+        fprintf(stderr, "output format : %s\n", "tsv");
+    }
+
+    // Parse output argument
+    if (opt.arg_fname_out != NULL) {
+        LOG_DEBUG("opening output file%s","");
+        // Create new file or
+        // Truncate existing file
+        FILE *new_file;
+        new_file = fopen(opt.arg_fname_out, "w");
+
+        // An error occurred
+        if (new_file == NULL) {
+            ERROR("File '%s' could not be opened - %s.",
+                  opt.arg_fname_out, strerror(errno));
+
+            return EXIT_FAILURE;
+        } else {
+            opt.f_out = new_file;
+        }
+    }
 
     htsFile* bam_fp = sam_open(bam_file_name, "r"); //open bam file
+
+    if (!bam_fp) {
+        ERROR("Error in opening file %s\n", bam_file_name);
+        return EXIT_FAILURE;
+    }
     bam_hdr_t* bam_hdr = sam_hdr_read(bam_fp);
     bam1_t *aln = bam_init1(); //initialize an alignment
+    if (!aln) {
+        ERROR("%s failed\n", "bam_init1)(");
+        return EXIT_FAILURE;
+    }
 
     while(sam_read1(bam_fp, bam_hdr, aln) > 0){
         LOG_DEBUG("%s\n", aln->data);
@@ -227,14 +273,15 @@ int sigb_formater(int argc, char* argv[]) {
                     LOG_DEBUG("%d", value);
 
                     if(len_seq > 0 && (value == 1 || i == len_mv-1)){
-                        fprintf(stdout, "%s\t", aln->data);
-                        fprintf(stdout, "%" PRIu32 "\t", kmer_idx);
-                        fprintf(stdout, "%" PRId8 "\t", i-1);
-                        fprintf(stdout, "%" PRIu64 "\t", start_idx);
+                        fprintf(opt.f_out, "%s\t", aln->data);
+                        fprintf(opt.f_out, "%" PRIu32 "\t", kmer_idx);
+                        fprintf(opt.f_out, "%" PRId8 "\t", i-1);
+                        fprintf(opt.f_out, "%" PRIu64 "\t", start_idx);
                         if( i == len_mv-1){
-                            fprintf(stdout, "%" PRIu64 "\n", end_idx+EXPECTED_STRIDE);
+                            uint32_t l_duration =  end_idx+EXPECTED_STRIDE+(ns-i*EXPECTED_STRIDE);
+                            fprintf(opt.f_out, "%" PRIu32 "", l_duration); //ss
                         } else{
-                            fprintf(stdout, "%" PRIu64 "\n", end_idx);
+                            fprintf(opt.f_out, "%" PRIu64 "\n", end_idx);
                         }
                         start_idx = end_idx;
                         kmer_idx++;
@@ -244,14 +291,13 @@ int sigb_formater(int argc, char* argv[]) {
                 }
 
             } else{
-                fprintf(stderr,"paf is not yet implemented");
-                fprintf(stdout, "%s\t", aln->data); //1
-                fprintf(stdout, "%" PRIu64 "\t", ns); //2
-
-
+                fprintf(opt.f_out, "%s\t", aln->data); //1
+                fprintf(opt.f_out, "%" PRIu64 "\t", ns); //2
                 uint32_t move_count = 0;
                 uint32_t i = 1;
                 uint32_t start_idx;
+                uint32_t kmer_idx = 0;
+
                 while(move_count < opt.move_start_offset){
                     int8_t value = bam_auxB2i(mv_array, i);
                     if(value == 1){
@@ -260,18 +306,36 @@ int sigb_formater(int argc, char* argv[]) {
                     }
                     i++;
                 }
-                fprintf(stdout, "%" PRIu64 "\t", ts + (i-2) * EXPECTED_STRIDE); //3
-                fprintf(stdout, "%" PRIu64 "\t", ns); //4
-                fprintf(stdout, "%s\t", "+"); //5
-                fprintf(stdout, "%s\t", aln->data); //6
-                fprintf(stdout, "%" PRIu32 "\t", len_seq); //7
-                uint32_t kmer_idx = 0;
-                fprintf(stdout, "%" PRIu32 "\t", kmer_idx); //8
-                fprintf(stdout, "%" PRIu32 "\t", len_seq); //9
-                fprintf(stdout, "%s\t", "*"); //10
-                fprintf(stdout, "%" PRIu32 "\t", len_seq); //11
-                fprintf(stdout, "%s\t", "255"); //12
-                fprintf(stdout, "%s", "ss:Z:"); //ss
+                fprintf(opt.f_out, "%" PRIu64 "\t", ts + (i-2) * EXPECTED_STRIDE); //3
+
+                uint32_t j = 1;
+                uint64_t l_end_raw = 0;
+                uint32_t len_seq_1 = len_seq+opt.move_start_offset;
+                uint32_t end_idx = j + 1;
+                for(; j<len_mv; j++){
+                    int8_t value = bam_auxB2i(mv_array, j);
+                    LOG_DEBUG("%d", value);
+                    if(len_seq_1 > 0 && value == 1){
+                        len_seq_1--;
+                        end_idx = j;
+                    }
+                }
+                if(len_seq_1 > 0 && j == len_mv){
+                    l_end_raw =  (j-1)*EXPECTED_STRIDE+EXPECTED_STRIDE+(ns-j*EXPECTED_STRIDE);
+                } else{
+                    l_end_raw =  (end_idx-1)*EXPECTED_STRIDE;
+                }
+
+                fprintf(opt.f_out, "%" PRIu64 "\t", l_end_raw); //4
+                fprintf(opt.f_out, "%s\t", "+"); //5
+                fprintf(opt.f_out, "%s\t", aln->data); //6
+                fprintf(opt.f_out, "%" PRIu32 "\t", len_seq + opt.kmer_size - 1); //7
+                fprintf(opt.f_out, "%" PRIu32 "\t", kmer_idx); //8
+                fprintf(opt.f_out, "%" PRIu32 "\t", len_seq - 1); //9
+                fprintf(opt.f_out, "%" PRIu32 "\t", len_seq - kmer_idx); //10
+                fprintf(opt.f_out, "%" PRIu32 "\t", len_seq + opt.kmer_size - 1); //11
+                fprintf(opt.f_out, "%s\t", "255"); //12
+                fprintf(opt.f_out, "%s", "ss:Z:"); //ss
 
                 int flag_first_value = 1;
                 for(; i<len_mv; i++){
@@ -279,17 +343,20 @@ int sigb_formater(int argc, char* argv[]) {
                     LOG_DEBUG("%d", value);
                     if(len_seq > 0 && value == 1){
                         if(flag_first_value == 0){
-                            fprintf(stdout, ",%" PRIu32 "", (i-start_idx)*EXPECTED_STRIDE); //ss
+                            fprintf(opt.f_out, ",%" PRIu32 "", (i-start_idx)*EXPECTED_STRIDE); //ss
                         } else{
-                            fprintf(stdout, "%" PRIu32 "", (i-start_idx)*EXPECTED_STRIDE); //ss
+                            fprintf(opt.f_out, "%" PRIu32 "", (i-start_idx)*EXPECTED_STRIDE); //ss
                             flag_first_value = 0;
                         }
                         start_idx = i;
                         len_seq--;
                     } else if(len_seq > 0 && i == len_mv-1){
-                        fprintf(stdout, ",%" PRIu32 "", (i-start_idx)*EXPECTED_STRIDE+EXPECTED_STRIDE); //ss
+                        uint32_t l_duration =  (i-start_idx)*EXPECTED_STRIDE+EXPECTED_STRIDE+(ns-i*EXPECTED_STRIDE);
+                        fprintf(opt.f_out, ",%" PRIu32 "", l_duration); //ss
                     }
                 }
+                fprintf(opt.f_out, "%s", "\n"); //newline
+
             }
         } else{
             ERROR("mv tag specification is incorrect%s", "");

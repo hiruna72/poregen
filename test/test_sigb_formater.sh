@@ -10,28 +10,6 @@
 RED='\033[0;31m' ; GREEN='\033[0;32m' ; NC='\033[0m' # No Color
 die() { echo -e "${RED}$1${NC}" >&2 ; echo ; exit 1 ; } # terminate script
 info() {  echo ; echo -e "${GREEN}$1${NC}" >&2 ; }
-# Relative path to "slow5/tests/"
-REL_PATH="$(dirname $0)/"
-
-#...directories files tools arguments commands clean
-OUTPUT_DIR="$REL_PATH/data/out/sib_formater"
-test -d "$OUTPUT_DIR" && rm -r "$OUTPUT_DIR"
-mkdir "$OUTPUT_DIR" || die "Failed creating $OUTPUT_DIR"
-#commands ...
-
-if [ "$1" = 'mem' ]; then
-    mem=1
-else
-    mem=0
-fi
-
-ex() {
-    if [ $mem -eq 1 ]; then
-        valgrind --leak-check=full --error-exitcode=1 ./poregen sigb_formater
-    else
-        ./poregen sigb_formater
-    fi
-}
 
 #redirect
 verbose=0
@@ -47,58 +25,99 @@ fi
 #echo "this should be seen if verbose"
 #echo "this should always be seen" 1>&3 2>&4
 
+# Relative path to "slow5/tests/"
+REL_PATH="$(dirname $0)/"
+#...directories files tools arguments commands clean
+OUTPUT_DIR="${REL_PATH}/data/out/sigb_formater"
+test -d "$OUTPUT_DIR" && rm -r "$OUTPUT_DIR"
+mkdir "$OUTPUT_DIR" || die "Failed creating $OUTPUT_DIR"
+#commands ...
+
+if [ "$1" = 'mem' ]; then
+    mem=1
+else
+    mem=0
+fi
+
+ex() {
+    if [ $mem -eq 1 ]; then
+        valgrind --leak-check=full --error-exitcode=1 ./poregen sigb_formater "$@"
+    else
+        ./poregen sigb_formater "$@"
+    fi
+}
+
+RAW_DIR="${REL_PATH}/data/raw/sigb_formater"
+EXP_DIR="${REL_PATH}/data/exp/sigb_formater"
+
 TESTCASE=1
 info "testcase:$TESTCASE - help"
-ex && die "testcase:$TESTCASE slow5tools cat failed"
-exit 0
+ex && die "testcase:$TESTCASE failed"
 
 TESTCASE=2
-info "testcase:$TESTCASE - cat two slow5s. output-stdout"
-$SLOW5TOOLS cat "$RAW_DIR/slow5s/" > "$OUTPUT_DIR/output.slow5" || die "testcase:$TESTCASE slow5tools cat failed"
-diff $EXP_SLOW5_FILE "$OUTPUT_DIR/output.slow5" || die "testcase:$TESTCASE diff failed"
-slow5tools_quickcheck $OUTPUT_DIR
+info "testcase:$TESTCASE - read:1,kmer:0,move:1,output:paf"
+ex -k0 -m1 -c "${RAW_DIR}/guppy_baecalled_one_read.bam" > ${OUTPUT_DIR}/out.paf && die "testcase:$TESTCASE failed"
 
 TESTCASE=3
-info "testcase:$TESTCASE - cat two blow5s. output-stdout"
-$SLOW5TOOLS cat "$RAW_DIR/blow5s/" > "$OUTPUT_DIR/output.blow5" || die "testcase:$TESTCASE slow5tools cat failed"
-$SLOW5TOOLS view "$OUTPUT_DIR/output.blow5" > "$OUTPUT_DIR/output.slow5" || die "testcase:$TESTCASE slow5tools view failed"
-diff $EXP_SLOW5_FILE "$OUTPUT_DIR/output.slow5" || die "testcase:$TESTCASE diff failed"
-slow5tools_quickcheck $OUTPUT_DIR
+info "testcase:$TESTCASE - read:1,kmer:9,move:0,output:paf"
+ex -k9 -m0 -c "${RAW_DIR}/guppy_baecalled_one_read.bam" > ${OUTPUT_DIR}/out.paf && die "testcase:$TESTCASE failed"
 
 TESTCASE=4
-info "testcase:$TESTCASE - cat two slow5s. output-file"
-$SLOW5TOOLS cat "$RAW_DIR/slow5s/" -o "$OUTPUT_DIR/output.slow5" || die "testcase:$TESTCASE slow5tools cat failed"
-diff $EXP_SLOW5_FILE "$OUTPUT_DIR/output.slow5" || die "testcase:$TESTCASE diff failed"
-slow5tools_quickcheck $OUTPUT_DIR
+info "testcase:$TESTCASE - read:1,kmer:9,move:10,output:paf"
+ex -k9 -m10 -c "${RAW_DIR}/guppy_baecalled_one_read.bam" > ${OUTPUT_DIR}/out.paf && die "testcase:$TESTCASE failed"
 
 TESTCASE=5
-info "testcase:$TESTCASE - cat two blow5s. output-file"
-$SLOW5TOOLS cat "$RAW_DIR/blow5s/" -o "$OUTPUT_DIR/output.blow5" || die "testcase:$TESTCASE slow5tools cat failed"
-$SLOW5TOOLS view "$OUTPUT_DIR/output.blow5" > "$OUTPUT_DIR/output.slow5" || die "testcase:$TESTCASE slow5tools view failed"
-diff $EXP_SLOW5_FILE "$OUTPUT_DIR/output.slow5" || die "testcase:$TESTCASE diff failed"
-slow5tools_quickcheck $OUTPUT_DIR
+info "testcase:$TESTCASE - read:1,kmer:1,move:1,output:paf"
+ex -k1 -m1 -c "${RAW_DIR}/guppy_baecalled_one_read.bam" > "${OUTPUT_DIR}/r1k1m1.paf" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/r1k1m1.paf" "${OUTPUT_DIR}/r1k1m1.paf" || die "testcase:${TESTCASE} diff failed"
 
 TESTCASE=6
-info "testcase:$TESTCASE - cat two slow5s. output-file. wrong file extension. $SLOW5TOOLS_ERROR"
-$SLOW5TOOLS cat "$RAW_DIR/slow5s/" -o "$OUTPUT_DIR/output.blow5" && die "testcase:$TESTCASE slow5tools cat failed"
+info "testcase:$TESTCASE - read:1,kmer:9,move:1,output:paf"
+ex -k9 -m1 -c "${RAW_DIR}/guppy_baecalled_one_read.bam" > "${OUTPUT_DIR}/r1k9m1.paf" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/r1k9m1.paf" "${OUTPUT_DIR}/r1k9m1.paf" || die "testcase:${TESTCASE} diff failed"
 
 TESTCASE=7
-info "testcase:$TESTCASE - cat two blow5s. output-file. wrong file extension. $SLOW5TOOLS_ERROR"
-$SLOW5TOOLS cat "$RAW_DIR/blow5s/" -o "$OUTPUT_DIR/output.slow5" && die "testcase:$TESTCASE slow5tools cat failed"
+info "testcase:$TESTCASE - read:1,kmer:9,move:2,output:paf"
+ex -k9 -m2 -c "${RAW_DIR}/guppy_baecalled_one_read.bam" > "${OUTPUT_DIR}/r1k9m2.paf" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/r1k9m2.paf" "${OUTPUT_DIR}/r1k9m2.paf" || die "testcase:${TESTCASE} diff failed"
 
 TESTCASE=8
-info "testcase:$TESTCASE - cat different format files. $SLOW5TOOLS_ERROR"
-$SLOW5TOOLS cat "$RAW_DIR/mixed_format/" > "$OUTPUT_DIR/output.slow5" && die "testcase:$TESTCASE slow5tools cat failed"
+info "testcase:$TESTCASE - read:1,kmer:9,move:7,output:paf"
+ex -k9 -m7 -c "${RAW_DIR}/guppy_baecalled_one_read.bam" > "${OUTPUT_DIR}/r1k9m7.paf" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/r1k9m7.paf" "${OUTPUT_DIR}/r1k9m7.paf" || die "testcase:${TESTCASE} diff failed"
 
 TESTCASE=9
-info "testcase:$TESTCASE - cat different compression types files. $SLOW5TOOLS_ERROR"
-$SLOW5TOOLS cat "$RAW_DIR/mixed_compression/" > "$OUTPUT_DIR/output.slow5" && die "testcase:$TESTCASE slow5tools cat failed"
+info "testcase:$TESTCASE - read:1,kmer:9,move:9,output:paf"
+ex -k9 -m9 -c "${RAW_DIR}/guppy_baecalled_one_read.bam" > "${OUTPUT_DIR}/r1k9m9.paf" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/r1k9m9.paf" "${OUTPUT_DIR}/r1k9m9.paf" || die "testcase:${TESTCASE} diff failed"
 
 TESTCASE=10
-info "testcase:$TESTCASE - cat different auxiliary attribute order. $SLOW5TOOLS_ERROR"
-$SLOW5TOOLS cat "$RAW_DIR/different_aux_order/" > "$OUTPUT_DIR/output.slow5" && die "testcase:$TESTCASE slow5tools cat failed"
+info "testcase:$TESTCASE - read:1,kmer:1,move:1,output:tsv"
+ex -k1 -m1 "${RAW_DIR}/guppy_baecalled_one_read.bam" > "${OUTPUT_DIR}/r1k1m1.tsv" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/r1k1m1.tsv" "${OUTPUT_DIR}/r1k1m1.tsv" || die "testcase:${TESTCASE} diff failed"
 
-info "all $TESTCASE cat testcases passed"
+TESTCASE=11
+info "testcase:$TESTCASE - read:1,kmer:9,move:1,output:tsv"
+ex -k9 -m1 "${RAW_DIR}/guppy_baecalled_one_read.bam" > "${OUTPUT_DIR}/r1k9m1.tsv" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/r1k9m1.tsv" "${OUTPUT_DIR}/r1k9m1.tsv" || die "testcase:${TESTCASE} diff failed"
+
+TESTCASE=12
+info "testcase:$TESTCASE - read:1,kmer:9,move:2,output:tsv"
+ex -k9 -m2 "${RAW_DIR}/guppy_baecalled_one_read.bam" > "${OUTPUT_DIR}/r1k9m2.tsv" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/r1k9m2.tsv" "${OUTPUT_DIR}/r1k9m2.tsv" || die "testcase:${TESTCASE} diff failed"
+
+TESTCASE=13
+info "testcase:$TESTCASE - read:1,kmer:9,move:7,output:tsv"
+ex -k9 -m7 "${RAW_DIR}/guppy_baecalled_one_read.bam" > "${OUTPUT_DIR}/r1k9m7.tsv" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/r1k9m7.tsv" "${OUTPUT_DIR}/r1k9m7.tsv" || die "testcase:${TESTCASE} diff failed"
+
+TESTCASE=14
+info "testcase:$TESTCASE - read:1,kmer:9,move:9,output:tsv"
+ex -k9 -m9 "${RAW_DIR}/guppy_baecalled_one_read.bam" > "${OUTPUT_DIR}/r1k9m9.tsv" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/r1k9m9.tsv" "${OUTPUT_DIR}/r1k9m9.tsv" || die "testcase:${TESTCASE} diff failed"
+
+
+info "all $TESTCASE testcases passed"
 rm -r "$OUTPUT_DIR" || die "could not delete $OUTPUT_DIR"
 exit 0
 # If you want to log to the same file: command1 >> log_file 2>&1

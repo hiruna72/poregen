@@ -41,6 +41,7 @@ enum signal_scaling{ noscale, medmad_scale };
 
 /* user specified options */
 typedef struct {
+    FILE *f_out;
 
     uint32_t flag;              //flags
     int32_t batch_size;         //max reads loaded at once: K
@@ -57,6 +58,8 @@ typedef struct {
     enum signal_scaling signal_scale;
     int32_t debug_break;
     int32_t use_paf_format;
+    char *arg_fname_out;
+
 
 } opt_t;
 

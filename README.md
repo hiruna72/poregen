@@ -38,6 +38,7 @@ sigb_formater --sig_move_offset 1 --kmer_length 1 -c -o output.paf pass_bam.bam
 sigb_formater --sig_move_offset 1 --kmer_length 1 -o output.tsv pass_bam.bam
 ```
 `sig_move_offset` is the number of moves `n` to skip in the signal (`n x stride`) to correct the start of the alignment. This will not skip bases in the fastq sequence.
+
 4. Optionally to visualize the signal to base alignment refer [ideal-goggles](https://github.com/hiruna72/ideal-goggles) plotting tool. 
 
 ## Move table explanation (unconfirmed)

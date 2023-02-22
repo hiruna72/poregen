@@ -367,5 +367,11 @@ int sigb_formater(int argc, char* argv[]) {
     bam_destroy1(aln);
     bam_hdr_destroy(bam_hdr);
     sam_close(bam_fp);
+
+    if (opt.arg_fname_out != NULL) {
+        LOG_DEBUG("closing output file%s","");
+        fclose(opt.f_out);
+    }
+
     return 0;
 }

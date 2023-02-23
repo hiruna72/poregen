@@ -42,7 +42,7 @@ void sig_handler(int sig) {
 int subtool0(int argc, char* argv[]);
 int gmove(int argc, char* argv[]);
 int kmer_freq(int argc, char* argv[]);
-int sigb_formater(int argc, char* argv[]);
+int reform(int argc, char* argv[]);
 
 int print_usage(FILE *fp_help){
 
@@ -50,7 +50,7 @@ int print_usage(FILE *fp_help){
     fprintf(fp_help,"command:\n");
     fprintf(fp_help,"         gmove             pore model using guppy move table\n");
     fprintf(fp_help,"         kmer_freq         calculate kmer frequency in a fastq file\n");
-    fprintf(fp_help,"         sigb_formater     reformat signal to base alignment \n");
+    fprintf(fp_help,"         reform            reformat signal to base alignment \n");
     fprintf(fp_help,"         subtool0          not yet implemented\n");
     if(fp_help==stderr){
         return(EXIT_FAILURE);
@@ -78,8 +78,8 @@ int main(int argc, char* argv[]){
         ret=gmove(argc-1, argv+1);
     } else if (strcmp(argv[1],"kmer_freq")==0){
         ret=kmer_freq(argc-1, argv+1);
-    } else if (strcmp(argv[1],"sigb_formater")==0){
-        ret=sigb_formater(argc-1, argv+1);
+    } else if (strcmp(argv[1],"reform")==0){
+        ret=reform(argc-1, argv+1);
     } else if(strcmp(argv[1],"--version")==0 || strcmp(argv[1],"-V")==0){
         fprintf(stdout,"poregen %s\n",POREGEN_VERSION);
         exit(EXIT_SUCCESS);

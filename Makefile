@@ -21,7 +21,7 @@ OBJ = $(BUILD_DIR)/main.o \
       $(BUILD_DIR)/subtool0.o \
       $(BUILD_DIR)/gmove.o \
       $(BUILD_DIR)/kmer_freq.o \
-      $(BUILD_DIR)/sigb_formater.o \
+      $(BUILD_DIR)/reform.o \
       $(BUILD_DIR)/thread.o \
 
 ifdef asan
@@ -49,7 +49,7 @@ $(BUILD_DIR)/gmove.o: src/gmove.cpp src/error.h src/ksort.h
 $(BUILD_DIR)/kmer_freq.o: src/kmer_freq.cpp src/error.h
 	$(CXX) $(LANGFLAG) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-$(BUILD_DIR)/sigb_formater.o: src/sigb_formater.cpp src/error.h $(BUILD_DIR)/lib/libhts.a
+$(BUILD_DIR)/reform.o: src/reform.cpp src/error.h $(BUILD_DIR)/lib/libhts.a
 	$(CXX) $(LANGFLAG) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/thread.o: src/thread.c

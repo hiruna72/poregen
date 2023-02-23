@@ -1,4 +1,4 @@
-/* @file  sigb_formater.c
+/* @file  reform.c
 ** properly format move table
 ** @@ Hiruna Samarakoon
  * https://gist.github.com/PoisonAlien/350677acc03b2fbf98aa
@@ -76,7 +76,7 @@ static inline void yes_or_no(opt_t* opt, uint64_t flag, int long_idx,
     }
 }
 
-int sigb_formater(int argc, char* argv[]) {
+int reform(int argc, char* argv[]) {
 
     //signal(SIGSEGV, sig_handler);
 
@@ -217,7 +217,7 @@ int sigb_formater(int argc, char* argv[]) {
         const char tag_ns[] = {'n', 's'};
         const uint8_t * ns_ptr = bam_aux_get(aln, tag_ns);
         if(!ns_ptr){
-            ERROR("NULL returned for tag ns: %s", strerror(errno));
+            ERROR("NULL returned for tag ns: %s", "");
             return -1;
         }
         int64_t ns;
@@ -229,7 +229,7 @@ int sigb_formater(int argc, char* argv[]) {
         const char tag_ts[] = {'t', 's'};
         const uint8_t * ts_ptr = bam_aux_get(aln, tag_ts);
         if(!ts_ptr){
-            ERROR("NULL returned for tag ts: %s", strerror(errno));
+            ERROR("NULL returned for tag ts: %s", "");
             return -1;
         }
         uint64_t ts;
@@ -241,13 +241,13 @@ int sigb_formater(int argc, char* argv[]) {
         const char tag_mv[] = {'m', 'v'};
         const uint8_t * mv_array = bam_aux_get(aln, tag_mv);
         if(!mv_array){
-            ERROR("NULL returned for tag mv: %s", strerror(errno));
+            ERROR("NULL returned for tag mv: %s", "");
             return -1;
         }
         if( (char)mv_array[0] == 'B' && (char)mv_array[1] == 'c'){
             uint32_t len_mv = bam_auxB_len(mv_array);
             if(len_mv == 0){
-                ERROR("mv array length is 0: %s", strerror(errno));
+                ERROR("mv array length is 0: %s", "");
                 return -1;
             }
             LOG_DEBUG("len_mv:%d\n", len_mv);

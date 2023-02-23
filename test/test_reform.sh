@@ -12,7 +12,7 @@ die() { echo -e "${RED}$1${NC}" >&2 ; echo ; exit 1 ; } # terminate script
 info() {  echo ; echo -e "${GREEN}$1${NC}" >&2 ; }
 
 #redirect
-verbose=0
+verbose=1
 exec 3>&1
 exec 4>&2
 if ((verbose)); then
@@ -28,7 +28,7 @@ fi
 # Relative path to "slow5/tests/"
 REL_PATH="$(dirname $0)/"
 #...directories files tools arguments commands clean
-OUTPUT_DIR="${REL_PATH}/data/out/sigb_formater"
+OUTPUT_DIR="${REL_PATH}/data/out/reform"
 test -d "$OUTPUT_DIR" && rm -r "$OUTPUT_DIR"
 mkdir "$OUTPUT_DIR" || die "Failed creating $OUTPUT_DIR"
 #commands ...
@@ -41,14 +41,14 @@ fi
 
 ex() {
     if [ $mem -eq 1 ]; then
-        valgrind --leak-check=full --error-exitcode=1 ./poregen sigb_formater "$@"
+        valgrind --leak-check=full --error-exitcode=1 ./poregen reform "$@"
     else
-        ./poregen sigb_formater "$@"
+        ./poregen reform "$@"
     fi
 }
 
-RAW_DIR="${REL_PATH}/data/raw/sigb_formater"
-EXP_DIR="${REL_PATH}/data/exp/sigb_formater"
+RAW_DIR="${REL_PATH}/data/raw/reform"
+EXP_DIR="${REL_PATH}/data/exp/reform"
 
 TESTCASE=1
 info "testcase:$TESTCASE - help"

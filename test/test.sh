@@ -58,11 +58,11 @@ ex ./poregen  && die "Running the tool failed"
 TESTCASE_NAME="sib_formater"
 info $TESTCASE_NAME
 if [ $mem -eq 1 ]; then
-    if ! ./test/test_sigb_formater.sh mem; then
+    if ! ./test/test_reform.sh mem; then
         fail "$TESTCASE_NAME"
     fi
 else
-    if ! ./test/test_sigb_formater.sh; then
+    if ! ./test/test_reform.sh; then
         fail "$TESTCASE_NAME"
     fi
 fi

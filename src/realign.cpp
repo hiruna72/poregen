@@ -76,7 +76,7 @@ static inline void yes_or_no(opt_t* opt, uint64_t flag, int long_idx,
     }
 }
 
-int reform(int argc, char* argv[]) {
+int realign(int argc, char* argv[]) {
 
     //signal(SIGSEGV, sig_handler);
 
@@ -124,6 +124,7 @@ int reform(int argc, char* argv[]) {
             set_log_level((enum poregen_log_level_opt)v);
         } else if (c=='o'){
             opt.arg_fname_out = optarg;
+            break;
         } else if (c=='V'){
             fprintf(stdout,"subtool0 %s\n",POREGEN_VERSION);
             exit(EXIT_SUCCESS);

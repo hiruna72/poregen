@@ -57,7 +57,7 @@ typedef struct {
     uint32_t index_end;
     enum signal_scaling signal_scale;
     int32_t debug_break;
-    int32_t use_paf_format;
+    int32_t use_paf_format; //HM: why is a flag int32? isnt a uint8_t inadequate?
     char *arg_fname_out;
 
 

@@ -151,6 +151,7 @@ int reform(int argc, char* argv[]) {
 
     // No arguments given
     if (argc - optind != 1 || fp_help == stdout) {
+        //HM: you need to first print something like not enough arguments first. Just printing the help message is not enough
         print_help_msg(fp_help, opt);
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
@@ -160,6 +161,7 @@ int reform(int argc, char* argv[]) {
     bam_file_name = argv[optind];
 
     if (bam_file_name == NULL) {
+        ////HM: you need to first print something like input file name cannot be null. Just printing the help message is not enough
         print_help_msg(fp_help, opt);
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
@@ -184,6 +186,7 @@ int reform(int argc, char* argv[]) {
         // Truncate existing file
         FILE *new_file;
         new_file = fopen(opt.arg_fname_out, "w");
+        //HM: you may use F_CHK() here which does the check
 
         // An error occurred
         if (new_file == NULL) {
@@ -197,12 +200,15 @@ int reform(int argc, char* argv[]) {
     }
 
     htsFile* bam_fp = sam_open(bam_file_name, "r"); //open bam file
-
+    //HM: you may use F_CHK() here which does the check and also prints the error message
     if (!bam_fp) {
         ERROR("Error in opening file %s\n", bam_file_name);
         return EXIT_FAILURE;
     }
+
     bam_hdr_t* bam_hdr = sam_hdr_read(bam_fp);
+    //HM: Where is the error check for bam_hdr_read()? //At least us ethe NULL_CHK() macro
+
     bam1_t *aln = bam_init1(); //initialize an alignment
     if (!aln) {
         ERROR("%s failed\n", "bam_init1)(");

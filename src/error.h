@@ -91,21 +91,21 @@ void set_log_level(enum poregen_log_level_opt level);
 #define F_CHK(ret, file) { \
     if ((ret) == NULL) { \
         ERROR("Could not to open file %s: %s", file, strerror(errno)) \
-        //HM: TODO: somehow exit(EXIT_FAILURE) is missing here, but it is in the original code I think
+        exit(EXIT_FAILURE); \
     } \
 }
 
 #define NULL_CHK(ret) { \
     if ((ret) == NULL) { \
-        ERROR("NULL returned: %s", strerror(errno)) \
-        //HM: TODO: somehow exit(EXIT_FAILURE) is missing here, but it is in the original code I think
+        ERROR("NULL returned: %s.", strerror(errno)) \
+        exit(EXIT_FAILURE); \
     } \
 }
 
 #define NEG_CHK(ret) { \
     if ((ret) < 0) { \
-        ERROR("Negative value returned: %s", strerror(errno)) \
-        //HM: TODO: somehow exit(EXIT_FAILURE) is missing here, but it is in the original code I think
+        ERROR("Negative value returned: %s.", strerror(errno)) \
+        exit(EXIT_FAILURE); \
     } \
 }
 

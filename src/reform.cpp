@@ -150,7 +150,7 @@ int reform(int argc, char* argv[]) {
 
     // No arguments given
     if (argc - optind != 1 || fp_help == stdout) {
-        //HM: you need to first print something like not enough arguments first. Just printing the help message is not enough
+        ERROR("%s", "not enough arguments")
         print_help_msg(fp_help, opt);
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
@@ -160,7 +160,7 @@ int reform(int argc, char* argv[]) {
     bam_file_name = argv[optind];
 
     if (bam_file_name == NULL) {
-        ////HM: you need to first print something like input file name cannot be null. Just printing the help message is not enough
+        ERROR("%s", "input file name cannot be null")
         print_help_msg(fp_help, opt);
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
@@ -185,28 +185,15 @@ int reform(int argc, char* argv[]) {
         // Truncate existing file
         FILE *new_file;
         new_file = fopen(opt.arg_fname_out, "w");
-        //HM: you may use F_CHK() here which does the check
-
-        // An error occurred
-        if (new_file == NULL) {
-            ERROR("File '%s' could not be opened - %s.",
-                  opt.arg_fname_out, strerror(errno));
-
-            return EXIT_FAILURE;
-        } else {
-            opt.f_out = new_file;
-        }
+        F_CHK(new_file, opt.arg_fname_out);
+        opt.f_out = new_file;
     }
 
     htsFile* bam_fp = sam_open(bam_file_name, "r"); //open bam file
-    //HM: you may use F_CHK() here which does the check and also prints the error message
-    if (!bam_fp) {
-        ERROR("Error in opening file %s\n", bam_file_name);
-        return EXIT_FAILURE;
-    }
+    F_CHK(bam_fp, bam_file_name);
 
     bam_hdr_t* bam_hdr = sam_hdr_read(bam_fp);
-    //HM: Where is the error check for bam_hdr_read()? //At least us ethe NULL_CHK() macro
+    NULL_CHK(bam_hdr);
 
     bam1_t *aln = bam_init1(); //initialize an alignment
     if (!aln) {
@@ -342,22 +329,16 @@ int reform(int argc, char* argv[]) {
                 fprintf(opt.f_out, "%s\t", "255"); //12
                 fprintf(opt.f_out, "%s", "ss:Z:"); //ss
 
-                int flag_first_value = 1;
                 for(; i<len_mv; i++){
                     int8_t value = bam_auxB2i(mv_array, i);
                     LOG_DEBUG("%d", value);
                     if(len_seq > 0 && value == 1){
-                        if(flag_first_value == 0){
-                            fprintf(opt.f_out, ",%" PRIu32 "", (i-start_idx)*EXPECTED_STRIDE); //ss
-                        } else{
-                            fprintf(opt.f_out, "%" PRIu32 "", (i-start_idx)*EXPECTED_STRIDE); //ss
-                            flag_first_value = 0;
-                        }
+                        fprintf(opt.f_out, "%" PRIu32 ",", (i-start_idx)*EXPECTED_STRIDE); //ss
                         start_idx = i;
                         len_seq--;
                     } else if(len_seq > 0 && i == len_mv-1){
                         uint32_t l_duration =  (i-start_idx)*EXPECTED_STRIDE+EXPECTED_STRIDE+(ns-i*EXPECTED_STRIDE);
-                        fprintf(opt.f_out, ",%" PRIu32 "", l_duration); //ss
+                        fprintf(opt.f_out, "%" PRIu32 ",", l_duration); //ss
                     }
                 }
                 fprintf(opt.f_out, "%s", "\n"); //newline

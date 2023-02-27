@@ -55,7 +55,7 @@ info ${TESTCASE_NAME}
 ex ./poregen  && die "Running the tool failed"
 
 
-TESTCASE_NAME="sib_formater"
+TESTCASE_NAME="reform"
 info $TESTCASE_NAME
 if [ $mem -eq 1 ]; then
     if ! ./test/test_reform.sh mem; then

@@ -200,8 +200,8 @@ int reform(int argc, char* argv[]) {
         ERROR("%s failed\n", "bam_init1)(");
         return EXIT_FAILURE;
     }
-
-    while(sam_read1(bam_fp, bam_hdr, aln) > 0){
+    int ret;
+    while((ret = sam_read1(bam_fp, bam_hdr, aln)) >= 0){
         LOG_DEBUG("%s\n", aln->data);
         uint32_t len_seq = aln->core.l_qseq; //length of the read.
         len_seq = len_seq - opt.kmer_size + 1; //to get the number of kmers
@@ -209,26 +209,29 @@ int reform(int argc, char* argv[]) {
         const char tag_ns[] = {'n', 's'};
         const uint8_t * ns_ptr = bam_aux_get(aln, tag_ns);
         if(!ns_ptr){
-            ERROR("NULL returned for tag ns: %s", "");
+            ERROR("tag 'ns' is not found. Please check your SAM/BAM file: %s", "");
             return -1;
         }
-        int64_t ns;
-        if( (char)ns_ptr[0] == 'i'){
-            ns = bam_aux2i(ns_ptr);
-        }
+//        if (*ns_ptr != 'i') {
+//            ERROR("tag 'ns' does not have the correct datatype. Please check your SAM/BAM file: %s", "");
+//            return -1;
+//        }
+        int64_t ns = bam_aux2i(ns_ptr);
         LOG_DEBUG("ns: %" PRIu64 "\n", ns);
 
         const char tag_ts[] = {'t', 's'};
         const uint8_t * ts_ptr = bam_aux_get(aln, tag_ts);
         if(!ts_ptr){
-            ERROR("NULL returned for tag ts: %s", "");
+            ERROR("tag 'ts' is not found. Please check your SAM/BAM file: %s", "");
             return -1;
         }
-        uint64_t ts;
-        if( (char)ns_ptr[0] == 'i'){
-            ts = bam_aux2i(ts_ptr);
-        }
+//        if (*ts_ptr != 'i') {
+//            ERROR("tag 'ns' does not have the correct datatype. Please check your SAM/BAM file: %s", "");
+//            return -1;
+//        }
+        int64_t ts = bam_aux2i(ts_ptr);
         LOG_DEBUG("ts: %" PRIu64 "\n", ts);
+
 
         const char tag_mv[] = {'m', 'v'};
         const uint8_t * mv_array = bam_aux_get(aln, tag_mv);
@@ -260,18 +263,17 @@ int reform(int argc, char* argv[]) {
                 uint64_t end_idx = ts + (i-1) * EXPECTED_STRIDE;
                 uint64_t start_idx = end_idx - EXPECTED_STRIDE;
                 uint32_t kmer_idx = 0;
-                for(; i<len_mv; i++){
+                for(; i<=len_mv; i++){
                     int8_t value = bam_auxB2i(mv_array, i);
-                    LOG_DEBUG("%d", value);
+//                    LOG_DEBUG("%d", value);
 
-                    if(len_seq > 0 && (value == 1 || i == len_mv-1)){
+                    if(len_seq > 0 && (value == 1 || i == len_mv)){
                         fprintf(opt.f_out, "%s\t", aln->data);
                         fprintf(opt.f_out, "%" PRIu32 "\t", kmer_idx);
-                        fprintf(opt.f_out, "%" PRId8 "\t", i-1);
+//                        fprintf(opt.f_out, "%" PRId8 "\t", i-1);
                         fprintf(opt.f_out, "%" PRIu64 "\t", start_idx);
-                        if( i == len_mv-1){
-                            uint32_t l_duration =  end_idx+EXPECTED_STRIDE+(ns-i*EXPECTED_STRIDE);
-                            fprintf(opt.f_out, "%" PRIu32 "", l_duration); //ss
+                        if( i == len_mv){
+                            fprintf(opt.f_out, "%" PRIu64 "\n", ns);
                         } else{
                             fprintf(opt.f_out, "%" PRIu64 "\n", end_idx);
                         }
@@ -282,7 +284,7 @@ int reform(int argc, char* argv[]) {
                     end_idx = end_idx + EXPECTED_STRIDE;
                 }
 
-            } else{
+            } else{ // print in paf format
                 fprintf(opt.f_out, "%s\t", aln->data); //1
                 fprintf(opt.f_out, "%" PRIu64 "\t", ns); //2
                 uint32_t move_count = 0;
@@ -304,7 +306,7 @@ int reform(int argc, char* argv[]) {
                 uint64_t l_end_raw = 0;
                 uint32_t len_seq_1 = len_seq+opt.move_start_offset;
                 uint32_t end_idx = j + 1;
-                for(; j<len_mv; j++){
+                for(; j<=len_mv; j++){
                     int8_t value = bam_auxB2i(mv_array, j);
                     LOG_DEBUG("%d", value);
                     if(len_seq_1 > 0 && value == 1){
@@ -312,10 +314,10 @@ int reform(int argc, char* argv[]) {
                         end_idx = j;
                     }
                 }
-                if(len_seq_1 > 0 && j == len_mv){
-                    l_end_raw =  (j-1)*EXPECTED_STRIDE+EXPECTED_STRIDE+(ns-j*EXPECTED_STRIDE);
+                if(len_seq_1 > 0 && j == len_mv+1){
+                    l_end_raw =  ns;
                 } else{
-                    l_end_raw =  (end_idx-1)*EXPECTED_STRIDE;
+                    l_end_raw =  ts+(end_idx-1)*EXPECTED_STRIDE;
                 }
 
                 fprintf(opt.f_out, "%" PRIu64 "\t", l_end_raw); //4
@@ -329,15 +331,19 @@ int reform(int argc, char* argv[]) {
                 fprintf(opt.f_out, "%s\t", "255"); //12
                 fprintf(opt.f_out, "%s", "ss:Z:"); //ss
 
-                for(; i<len_mv; i++){
+                for(; i<=len_mv; i++){
                     int8_t value = bam_auxB2i(mv_array, i);
                     LOG_DEBUG("%d", value);
                     if(len_seq > 0 && value == 1){
                         fprintf(opt.f_out, "%" PRIu32 ",", (i-start_idx)*EXPECTED_STRIDE); //ss
                         start_idx = i;
                         len_seq--;
-                    } else if(len_seq > 0 && i == len_mv-1){
-                        uint32_t l_duration =  (i-start_idx)*EXPECTED_STRIDE+EXPECTED_STRIDE+(ns-i*EXPECTED_STRIDE);
+                    } else if(len_seq > 0 && i == len_mv){
+                        if((ns - ((i-1)*EXPECTED_STRIDE + ts)) < 0){
+                            ERROR("%s", "Error in calcuation. (ns - ((i-1)*EXPECTED_STRIDE + ts)) > 0 is not valid");
+                            return -1;
+                        }
+                        uint32_t l_duration =  ((i-start_idx)*EXPECTED_STRIDE) + (ns - ((i-1)*EXPECTED_STRIDE + ts));
                         fprintf(opt.f_out, "%" PRIu32 ",", l_duration); //ss
                     }
                 }
@@ -345,7 +351,7 @@ int reform(int argc, char* argv[]) {
 
             }
         } else{
-            ERROR("mv tag specification is incorrect%s", "");
+            ERROR("tag 'mv' specification is incorrect%s", "");
             return -1;
         }
     }

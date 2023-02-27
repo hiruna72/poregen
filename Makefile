@@ -7,7 +7,7 @@ LDFLAGS  += $(LIBS) -lz -lm -lpthread
 BUILD_DIR = build
 CPPFLAGS += -I slow5lib/include/ -I $(BUILD_DIR)/htslib
 
-HTS_VERSION = 1.9
+HTS_VERSION = 1.17
 
 ifeq ($(zstd),1)
 LDFLAGS		+= -lzstd

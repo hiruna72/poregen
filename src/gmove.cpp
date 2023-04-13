@@ -27,20 +27,23 @@ KSORT_INIT_GENERIC(int16_t)
 KSORT_INIT_GENERIC(int)
 #endif
 
+void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers);
+
 static struct option long_options[] = {
     {"kmer_size", required_argument, 0, 'k'},           //0 kmer_size [6]
     {"move_start_offset", required_argument, 0, 'm'},   //1 move_start_offset [5]
-    {"scaling", required_argument, NULL, 0},       //2 scaling 1-medmad
-    {"margin", required_argument, NULL, 0},        //3
-    {"sample_limit", required_argument, NULL, 0},  //4
-    {"file_limit", required_argument, NULL, 0},    //5
-    {"kmer_file", required_argument, NULL, 0},     //6
-    {"index_start", required_argument, NULL, 0},   //7
-    {"index_end", required_argument, NULL, 0},     //8
-    {"verbose", required_argument, 0, 'v'},        //9 verbosity level [1]
-    {"help", no_argument, 0, 'h'},                 //10
-    {"version", no_argument, 0, 'V'},              //11
-    {"debug-break",required_argument, 0, 0},       //12 break after processing the first batch (used for debugging)
+    {"kmer_start_offset", required_argument, 0, 's'},   //2 kmer_start_offset [0]
+    {"scaling", required_argument, NULL, 0},       //3 scaling 1-medmad
+    {"margin", required_argument, NULL, 0},        //4
+    {"sample_limit", required_argument, NULL, 0},  //5
+    {"file_limit", required_argument, NULL, 0},    //6
+    {"kmer_file", required_argument, NULL, 0},     //7
+    {"index_start", required_argument, NULL, 0},   //8
+    {"index_end", required_argument, NULL, 0},     //9
+    {"verbose", required_argument, 0, 'v'},        //10 verbosity level [1]
+    {"help", no_argument, 0, 'h'},                 //11
+    {"version", no_argument, 0, 'V'},              //12
+    {"debug-break",required_argument, 0, 0},       //13 break after processing the first batch (used for debugging)
     {0, 0, 0, 0}};
 
 
@@ -49,6 +52,7 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"\nbasic options:\n");
     fprintf(fp_help,"   -k INT                     kmer_size [%d]\n",opt.kmer_size);
     fprintf(fp_help,"   -m INT                     move start offset [%d]\n",opt.move_start_offset);
+    fprintf(fp_help,"   -s INT                     kmer start offset [%d]\n",opt.move_start_offset);
     fprintf(fp_help,"   --scaling INT              scaling [%d] (0-no scaling, 1-medmad)\n",opt.signal_scale);
     fprintf(fp_help,"   --margin INT               signal print margin on both sides of the sub signal[%u] \n",opt.signal_print_margin);
     fprintf(fp_help,"   --sample_limit INT         maximum number of instances to output for a kmer [%u] \n",opt.sample_limit);
@@ -161,7 +165,7 @@ int gmove(int argc, char* argv[]) {
 
 //    fprintf(stderr,"%d", get_log_level());
 
-    const char* optstring = "k:m:";
+    const char* optstring = "k:m:s:";
 
     int longindex = 0;
     int32_t c = -1;
@@ -175,7 +179,6 @@ int gmove(int argc, char* argv[]) {
 
     char dna_set[] = {'A', 'C', 'G', 'T'};
 
-    int kmer_start_offset = 0;
     FILE *fp_help = stderr;
 
     opt_t opt;
@@ -196,6 +199,12 @@ int gmove(int argc, char* argv[]) {
                 exit(EXIT_FAILURE);
             }
             opt.move_start_offset = atoi(optarg);
+        } else if (c == 's') {
+            if (atoi(optarg) < 1) {
+                ERROR("Kmer offset should be larger than 0. You entered %d", atoi(optarg));
+                exit(EXIT_FAILURE);
+            }
+            opt.kmer_start_offset = atoi(optarg);
         } else if (c=='v'){
             int v = atoi(optarg);
             set_log_level((enum poregen_log_level_opt)v);
@@ -205,45 +214,45 @@ int gmove(int argc, char* argv[]) {
         } else if (c=='h'){
             fp_help = stdout;
             fp_help = stdout;
-        } else if(c == 0 && longindex == 2){ //scaling
+        } else if(c == 0 && longindex == 3){ //scaling
             signal_scale = atoi(optarg);
-        } else if (c == 0 && longindex == 3){ //margin
+        } else if (c == 0 && longindex == 4){ //margin
             if(atoi(optarg) < 0){
                 ERROR("Signal print margin should be non negative. You entered %d", atoi(optarg));
                 exit(EXIT_FAILURE);
             }
             opt.signal_print_margin = atoi(optarg);
-        } else if (c == 0 && longindex == 4){ //kmer_limit
+        } else if (c == 0 && longindex == 5){ //kmer_limit
             if(atoi(optarg) < 0){
                 ERROR("Maximum number of instances to output for a kmer should be non negative. You entered %d", atoi(optarg));
                 exit(EXIT_FAILURE);
             }
             opt.sample_limit = atoi(optarg);
-        } else if (c == 0 && longindex == 5){ //dump_limit
+        } else if (c == 0 && longindex == 6){ //dump_limit
             if(atoi(optarg) < 0){
                 ERROR("Maximum number of kmer files to output should be non negative. You entered %d", atoi(optarg));
                 exit(EXIT_FAILURE);
             }
             opt.file_limit = atoi(optarg);
             opt.index_end = opt.index_start + opt.file_limit;
-        } else if (c == 0 && longindex == 6){
+        } else if (c == 0 && longindex == 7){
             input_kmer_file = optarg;
             flag_kmer_file_avail = 1;
-        } else if (c == 0 && longindex == 7){
+        } else if (c == 0 && longindex == 8){
             if(atoi(optarg) < 1){
                 ERROR("kmer index start should be a positive number. You entered %d", atoi(optarg));
                 exit(EXIT_FAILURE);
             }
             opt.index_start = atoi(optarg);
             opt.file_limit = opt.index_end - opt.index_start + 1;
-        } else if (c == 0 && longindex == 8){
+        } else if (c == 0 && longindex == 9){
             if(atoi(optarg) < 1){
                 ERROR("kmer index end should be a positive number. You entered %d", atoi(optarg));
                 exit(EXIT_FAILURE);
             }
             opt.index_end = atoi(optarg);
             opt.file_limit = opt.index_end - opt.index_start + 1;
-        } else if (c == 0 && longindex == 12){ //debug break
+        } else if (c == 0 && longindex == 13){ //debug break
             opt.debug_break = atoi(optarg);
         }
     }
@@ -392,15 +401,36 @@ int gmove(int argc, char* argv[]) {
         fprintf(stderr,"Error in opening file %s\n", slow5file);
         exit(EXIT_FAILURE);
     }
-    slow5_rec_t *rec = NULL;
-    int ret=0;
 
-    ret = slow5_idx_load(sp);
+    int ret = slow5_idx_load(sp);
     if(ret<0){
         fprintf(stderr,"Error in loading index\n");
         exit(EXIT_FAILURE);
     }
 
+    process_move_table_file(move_table, kmer_file_pointer_array, &sp, &opt, kmer_frequency_map, kmers);
+
+    close_kmer_files(&kmer_file_pointer_array, kmers, &opt);
+
+    std::string kmer_freq_file_name = std::string(std::string(output_dir)+"/freq.txt");
+    FILE* kmer_freq_file = fopen(kmer_freq_file_name.c_str(), "w");
+    if (kmer_freq_file == NULL){
+        fprintf(stderr,"Error in opening %s\n", kmer_freq_file_name.c_str());
+        exit(EXIT_FAILURE);
+    }
+    for(uint32_t i=opt.index_start-1;i<opt.index_end;i++){
+        fprintf(kmer_freq_file, "%s\t%" PRIu64 "\n", kmers[i].c_str(), kmer_frequency_map[kmers[i]]);
+    }
+
+    return 0;
+}
+
+void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers){
+    slow5_file_t *sp = *sp_ptr;
+    slow5_rec_t *rec = NULL;
+    int ret=0;
+
+    opt_t opt =  *opt_ptr;
     FILE * basecall_fp = NULL;
     char * line = NULL;
     size_t len = 0;
@@ -451,7 +481,7 @@ int gmove(int argc, char* argv[]) {
 //                printf("%f ",pA);
         }
         //calculate medmad
-        if(signal_scale == medmad_scale){
+        if(opt.signal_scale == medmad_scale){
             double read_median = calc_median(raw_signal.data(), len_raw_signal);
             if(read_median == NAN){
                 continue;
@@ -482,7 +512,7 @@ int gmove(int argc, char* argv[]) {
             move_idx++;
         }
         move_idx = start_move_idx + 1;
-        size_t seq_start = kmer_start_offset;
+        size_t seq_start = opt.kmer_start_offset;
         for(;move_idx<=move_len;move_idx++){
             if(move_seq[move_idx]=='1'){
                 std::string kmer = fastq_seq.substr(seq_start, opt.kmer_size);
@@ -498,8 +528,6 @@ int gmove(int argc, char* argv[]) {
                 if(kmer_frequency_map[kmer] == opt.sample_limit){
                     continue;
                 }
-
-
                 if(raw_start_local-opt.signal_print_margin < 0){
                     raw_start_local = 0;
                 } else{
@@ -545,18 +573,4 @@ int gmove(int argc, char* argv[]) {
     if (line){
         free(line);
     }
-
-    close_kmer_files(&kmer_file_pointer_array, kmers, &opt);
-
-    std::string kmer_freq_file_name = std::string(std::string(output_dir)+"/freq.txt");
-    FILE* kmer_freq_file = fopen(kmer_freq_file_name.c_str(), "w");
-    if (kmer_freq_file == NULL){
-        fprintf(stderr,"Error in opening %s\n", kmer_freq_file_name.c_str());
-        exit(EXIT_FAILURE);
-    }
-    for(uint32_t i=opt.index_start-1;i<opt.index_end;i++){
-        fprintf(kmer_freq_file, "%s\t%" PRIu64 "\n", kmers[i].c_str(), kmer_frequency_map[kmers[i]]);
-    }
-
-    return 0;
 }

@@ -213,6 +213,7 @@ void init_opt(opt_t* opt) {
     opt->num_thread = 8;
     opt->kmer_size = DEFAULT_KMER_SIZE;
     opt->move_start_offset = opt->kmer_size - 1;
+    opt->kmer_start_offset = 0;
     opt->signal_print_margin = SIGNAL_PRINT_MARGIN;
     opt->sample_limit = KMER_SAMPLE_LIMIT;
     opt->file_limit = KMERS_TO_DUMP_LIMIT;

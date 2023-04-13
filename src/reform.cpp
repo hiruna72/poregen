@@ -18,18 +18,18 @@
 #define EXPECTED_STRIDE 5
 
 static struct option long_options[] = {
-    {"kmer_length", required_argument, 0, 'k'},         //0 kmer length [9]
-    {"sig_move_offset", required_argument, 0, 'm'},     //1 signal move offset  [9]
-    {"", no_argument, 0, 'c'},                          //2 optional paf format
-    {"threads", required_argument, 0, 't'},             //3 number of threads [8]
-    {"batchsize", required_argument, 0, 'K'},           //4 batchsize - number of reads loaded at once [512]
-    {"max-bytes", required_argument, 0, 'B'},           //5 batchsize - number of bytes loaded at once
-    {"verbose", required_argument, 0, 'v'},             //6 verbosity level [1]
-    {"help", no_argument, 0, 'h'},                      //7
-    {"version", no_argument, 0, 'V'},                   //8
-    {"output",required_argument, 0, 'o'},               //9 output to a file [stdout]
-    {"debug-break",required_argument, 0, 0},            //10 break after processing the first batch (used for debugging)
-    {0, 0, 0, 0}};
+        {"kmer_length", required_argument, 0, 'k'},         //0 kmer length [9]
+        {"sig_move_offset", required_argument, 0, 'm'},     //1 signal move offset  [9]
+        {"", no_argument, 0, 'c'},                          //2 optional paf format
+        {"threads", required_argument, 0, 't'},             //3 number of threads [8]
+        {"batchsize", required_argument, 0, 'K'},           //4 batchsize - number of reads loaded at once [512]
+        {"max-bytes", required_argument, 0, 'B'},           //5 batchsize - number of bytes loaded at once
+        {"verbose", required_argument, 0, 'v'},             //6 verbosity level [1]
+        {"help", no_argument, 0, 'h'},                      //7
+        {"version", no_argument, 0, 'V'},                   //8
+        {"output",required_argument, 0, 'o'},               //9 output to a file [stdout]
+        {"debug-break",required_argument, 0, 0},            //10 break after processing the first batch (used for debugging)
+        {0, 0, 0, 0}};
 
 
 static inline void print_help_msg(FILE *fp_help, opt_t opt){
@@ -136,11 +136,11 @@ int reform(int argc, char* argv[]) {
 
 
     if(opt.kmer_size < 1){
-        ERROR("kmer length must be non zero%s", "")
+        ERROR("kmer length must be a positive integer%s", "")
         return -1;
     }
     if(opt.move_start_offset < 1){
-        ERROR("signal move offset value must be non zero%s", "")
+        ERROR("signal move offset value must be positive integer%s", "")
         return -1;
     }
     if(opt.kmer_size < opt.move_start_offset){
@@ -263,21 +263,25 @@ int reform(int argc, char* argv[]) {
                 uint64_t end_idx = ts + (i-1) * EXPECTED_STRIDE;
                 uint64_t start_idx = end_idx - EXPECTED_STRIDE;
                 uint32_t kmer_idx = 0;
-                for(; i<=len_mv; i++){
+                for(; i<len_mv; i++){
                     int8_t value = bam_auxB2i(mv_array, i);
-//                    LOG_DEBUG("%d", value);
+                    LOG_DEBUG("%d", value);
 
-                    if(len_seq > 0 && (value == 1 || i == len_mv)){
+                    if(len_seq > 0 && value == 1){
                         fprintf(opt.f_out, "%s\t", aln->data);
                         fprintf(opt.f_out, "%" PRIu32 "\t", kmer_idx);
-//                        fprintf(opt.f_out, "%" PRId8 "\t", i-1);
                         fprintf(opt.f_out, "%" PRIu64 "\t", start_idx);
-                        if( i == len_mv){
-                            fprintf(opt.f_out, "%" PRIu64 "\n", ns);
-                        } else{
-                            fprintf(opt.f_out, "%" PRIu64 "\n", end_idx);
-                        }
+                        fprintf(opt.f_out, "%" PRIu64 "\n", end_idx);
                         start_idx = end_idx;
+                        kmer_idx++;
+                        len_seq--;
+                    }
+                    if(len_seq > 0 && i == len_mv-1){
+                        fprintf(opt.f_out, "%s\t", aln->data);
+                        fprintf(opt.f_out, "%" PRIu32 "\t", kmer_idx);
+                        fprintf(opt.f_out, "%" PRIu64 "\t", start_idx);
+                        fprintf(opt.f_out, "%" PRIu64 "\n", ns);
+                        start_idx = ns;
                         kmer_idx++;
                         len_seq--;
                     }
@@ -306,7 +310,7 @@ int reform(int argc, char* argv[]) {
                 uint64_t l_end_raw = 0;
                 uint32_t len_seq_1 = len_seq+opt.move_start_offset;
                 uint32_t end_idx = j + 1;
-                for(; j<=len_mv; j++){
+                for(; j<len_mv; j++){
                     int8_t value = bam_auxB2i(mv_array, j);
                     LOG_DEBUG("%d", value);
                     if(len_seq_1 > 0 && value == 1){
@@ -314,7 +318,7 @@ int reform(int argc, char* argv[]) {
                         end_idx = j;
                     }
                 }
-                if(len_seq_1 > 0 && j == len_mv+1){
+                if(len_seq_1 > 0 && j == len_mv){
                     l_end_raw =  ns;
                 } else{
                     l_end_raw =  ts+(end_idx-1)*EXPECTED_STRIDE;
@@ -323,32 +327,38 @@ int reform(int argc, char* argv[]) {
                 fprintf(opt.f_out, "%" PRIu64 "\t", l_end_raw); //4
                 fprintf(opt.f_out, "%s\t", "+"); //5
                 fprintf(opt.f_out, "%s\t", aln->data); //6
-                fprintf(opt.f_out, "%" PRIu32 "\t", len_seq + opt.kmer_size - 1); //7
+                fprintf(opt.f_out, "%" PRIu32 "\t", len_seq); //7
                 fprintf(opt.f_out, "%" PRIu32 "\t", kmer_idx); //8
-                fprintf(opt.f_out, "%" PRIu32 "\t", len_seq - 1); //9
+                fprintf(opt.f_out, "%" PRIu32 "\t", len_seq); //9
                 fprintf(opt.f_out, "%" PRIu32 "\t", len_seq - kmer_idx); //10
-                fprintf(opt.f_out, "%" PRIu32 "\t", len_seq + opt.kmer_size - 1); //11
+                fprintf(opt.f_out, "%" PRIu32 "\t", len_seq); //11
                 fprintf(opt.f_out, "%s\t", "255"); //12
                 fprintf(opt.f_out, "%s", "ss:Z:"); //ss
 
-                for(; i<=len_mv; i++){
+                for(; i<len_mv; i++){
                     int8_t value = bam_auxB2i(mv_array, i);
-                    LOG_DEBUG("%d", value);
+                    LOG_DEBUG("%d\t%d", i, value);
                     if(len_seq > 0 && value == 1){
+//                        fprintf(stderr, "%d\t%d\t%d\n", i, value,len_seq);
                         fprintf(opt.f_out, "%" PRIu32 ",", (i-start_idx)*EXPECTED_STRIDE); //ss
                         start_idx = i;
                         len_seq--;
-                    } else if(len_seq > 0 && i == len_mv){
+                    }
+                    if(len_seq > 0 && i == len_mv-1){
                         if((ns - ((i-1)*EXPECTED_STRIDE + ts)) < 0){
                             ERROR("%s", "Error in calcuation. (ns - ((i-1)*EXPECTED_STRIDE + ts)) > 0 is not valid");
                             return -1;
                         }
+                        len_seq--;
                         uint32_t l_duration =  ((i-start_idx)*EXPECTED_STRIDE) + (ns - ((i-1)*EXPECTED_STRIDE + ts));
                         fprintf(opt.f_out, "%" PRIu32 ",", l_duration); //ss
                     }
                 }
+                if(len_seq != 0){
+                    ERROR("Error in the implementation. Please report the command with minimal reproducible data. Read_id: %s", aln->data);
+                    return -1;
+                }
                 fprintf(opt.f_out, "%s", "\n"); //newline
-
             }
         } else{
             ERROR("tag 'mv' specification is incorrect%s", "");

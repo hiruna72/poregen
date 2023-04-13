@@ -127,6 +127,16 @@ info "testcase:$TESTCASE - read:2,kmer:9,move:9,output:paf"
 ex -k9 -m9 -c "${RAW_DIR}/slow5-dorado.sam" > "${OUTPUT_DIR}/dr2k9m9.paf" || die "testcase:$TESTCASE failed"
 diff "${EXP_DIR}/dr2k9m9.paf" "${OUTPUT_DIR}/dr2k9m9.paf" || die "testcase:${TESTCASE} diff failed"
 
+TESTCASE=17
+info "testcase:$TESTCASE - read:2,kmer:1,move:1,output:tsv"
+ex -k1 -m1 "${RAW_DIR}/slow5-dorado.sam" > "${OUTPUT_DIR}/dr2k1m1.tsv" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/dr2k1m1.tsv" "${OUTPUT_DIR}/dr2k1m1.tsv" || die "testcase:${TESTCASE} diff failed"
+
+TESTCASE=18
+info "testcase:$TESTCASE - read:2,kmer:1,move:1,output:paf"
+ex -k1 -m1 -c "${RAW_DIR}/slow5-dorado.sam" > "${OUTPUT_DIR}/dr2k1m1.paf" || die "testcase:$TESTCASE failed"
+diff "${EXP_DIR}/dr2k1m1.paf" "${OUTPUT_DIR}/dr2k1m1.paf" || die "testcase:${TESTCASE} diff failed"
+
 info "all $TESTCASE testcases passed"
 rm -r "$OUTPUT_DIR" || die "could not delete $OUTPUT_DIR"
 exit 0

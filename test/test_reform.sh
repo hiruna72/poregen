@@ -1,11 +1,6 @@
 #!/bin/bash
 
 # steps
-# cat slow5 files
-# cat blow5 files
-# convert catenated blow5 to slow5
-# compare slow5s against the expected
-# additional error catching testcases
 
 RED='\033[0;31m' ; GREEN='\033[0;32m' ; NC='\033[0m' # No Color
 die() { echo -e "${RED}$1${NC}" >&2 ; echo ; exit 1 ; } # terminate script

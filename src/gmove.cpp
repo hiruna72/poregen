@@ -408,7 +408,21 @@ int gmove(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    process_move_table_file(move_table, kmer_file_pointer_array, &sp, &opt, kmer_frequency_map, kmers);
+    int flag_paf_file = 0;
+    std::string move_table_str = std::string(move_table);
+    std::string extension = move_table_str.substr(move_table_str.length()-4, move_table_str.length());
+    if(extension == ".paf"){
+        flag_paf_file = 1;
+    }
+
+    if(flag_paf_file == 1){
+        //paf parsing
+        fprintf(stderr,"Paf parsing not yet implemented\n");
+        exit(EXIT_FAILURE);
+    } else{
+        process_move_table_file(move_table, kmer_file_pointer_array, &sp, &opt, kmer_frequency_map, kmers);
+    }
+
 
     close_kmer_files(&kmer_file_pointer_array, kmers, &opt);
 
@@ -574,3 +588,35 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
         free(line);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

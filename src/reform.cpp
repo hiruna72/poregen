@@ -143,8 +143,8 @@ int reform(int argc, char* argv[]) {
         ERROR("signal move offset value must not be less than zero%s", "")
         return -1;
     }
-    if(opt.kmer_size < opt.move_start_offset){
-        ERROR("signal move offset value must not be larger than the kmer length%s", "")
+    if(opt.kmer_size <= opt.move_start_offset){
+        ERROR("signal move offset value must less than the kmer length%s", "")
         return -1;
     }
 
@@ -212,10 +212,6 @@ int reform(int argc, char* argv[]) {
             ERROR("tag 'ns' is not found. Please check your SAM/BAM file: %s", "");
             return -1;
         }
-//        if (*ns_ptr != 'i') {
-//            ERROR("tag 'ns' does not have the correct datatype. Please check your SAM/BAM file: %s", "");
-//            return -1;
-//        }
         int64_t ns = bam_aux2i(ns_ptr);
         LOG_DEBUG("ns: %" PRIu64 "\n", ns);
 
@@ -225,10 +221,6 @@ int reform(int argc, char* argv[]) {
             ERROR("tag 'ts' is not found. Please check your SAM/BAM file: %s", "");
             return -1;
         }
-//        if (*ts_ptr != 'i') {
-//            ERROR("tag 'ns' does not have the correct datatype. Please check your SAM/BAM file: %s", "");
-//            return -1;
-//        }
         int64_t ts = bam_aux2i(ts_ptr);
         LOG_DEBUG("ts: %" PRIu64 "\n", ts);
 

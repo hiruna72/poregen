@@ -19,6 +19,7 @@
 #include <map>
 #include <algorithm>
 #include <htslib/faidx.h>
+#include <htslib/sam.h>
 
 #ifndef DISABLE_KSORT
 #include "ksort.h"
@@ -27,7 +28,10 @@ KSORT_INIT_GENERIC(double)
 KSORT_INIT_GENERIC(int16_t)
 KSORT_INIT_GENERIC(int)
 #endif
+
 #define MAX_LEN_KMER 2000
+#define EXPECTED_STRIDE 5
+
 typedef struct{
     char *rid;
     int32_t qlen;
@@ -61,6 +65,7 @@ static struct option long_options[] = {
     {0, 0, 0, 0}};
 
 void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers);
+void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers);
 void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers, char *input_fastq_file);
 void free_paf_rec(paf_rec_t *paf);
 paf_rec_t *parse_paf_rec(char *buffer);
@@ -314,6 +319,19 @@ int gmove(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    if(opt.kmer_size < 1){
+        ERROR("kmer length must be a positive integer%s", "")
+        return -1;
+    }
+    if(opt.move_start_offset < 0){
+        ERROR("signal move offset value must not be less than zero%s", "")
+        return -1;
+    }
+    if(opt.kmer_size <= opt.move_start_offset){
+        ERROR("signal move offset value must less than the kmer length%s", "")
+        return -1;
+    }
+
     int ret_create_dir = create_dir(output_dir);
     if(ret_create_dir == -1){
         fprintf(stderr,"Output directory %s is not empty. Please remove it or specify another directory.", output_dir);
@@ -445,8 +463,7 @@ int gmove(int argc, char* argv[]) {
         process_move_table_paf(move_table, kmer_file_pointer_array, &sp, &opt, kmer_frequency_map, kmers, input_fastq_file);
     } else if(extension == ".bam" || extension == ".sam") {
         //SAM parsing
-        fprintf(stderr,"sam/bam parsing not yet implemented\n");
-        exit(EXIT_FAILURE);
+        process_move_table_bam(move_table, kmer_file_pointer_array, &sp, &opt, kmer_frequency_map, kmers);
     } else{
         process_move_table_file(move_table, kmer_file_pointer_array, &sp, &opt, kmer_frequency_map, kmers);
     }
@@ -585,7 +602,6 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
                 } else{
                     raw_end_local = raw_end_local + opt.signal_print_margin;
                 }
-//                fprintf(stdout,"%d\t%d\n", raw_start_local, raw_end_local);
 //                fprintf(stdout,"%d\t%d\n",raw_start_local, raw_end_local);
                 std::vector<double> raw_signal_local(raw_signal.begin()+raw_start_local,raw_signal.begin()+raw_end_local);
 
@@ -909,6 +925,189 @@ void free_paf_rec(paf_rec_t *paf){
     free(paf);
 }
 
+void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers){
+    slow5_file_t *sp = *sp_ptr;
+    slow5_rec_t *rec = NULL;
+    int ret=0;
+
+    opt_t opt =  *opt_ptr;
+    htsFile* bam_fp = sam_open(move_table, "r"); //open bam file
+    F_CHK(bam_fp, move_table);
+
+    bam_hdr_t* bam_hdr = sam_hdr_read(bam_fp);
+    NULL_CHK(bam_hdr);
+
+    bam1_t *aln = bam_init1(); //initialize an alignment
+    if (!aln) {
+        ERROR("%s failed\n", "bam_init1)(");
+        exit(EXIT_FAILURE);
+    }
+    int count_reads = 0;
+    while((ret = sam_read1(bam_fp, bam_hdr, aln)) >= 0){
+        const char tag_ns[] = {'n', 's'};
+        const uint8_t * ns_ptr = bam_aux_get(aln, tag_ns);
+        if(!ns_ptr){
+            ERROR("tag 'ns' is not found. Please check your SAM/BAM file: %s", "");
+            exit(EXIT_FAILURE);
+        }
+        uint64_t signal_len = bam_aux2i(ns_ptr);
+
+        const char tag_ts[] = {'t', 's'};
+        const uint8_t * ts_ptr = bam_aux_get(aln, tag_ts);
+        if(!ts_ptr){
+            ERROR("tag 'ts' is not found. Please check your SAM/BAM file: %s", "");
+            exit(EXIT_FAILURE);
+        }
+        uint64_t trim_offset = bam_aux2i(ts_ptr);
+
+        const char tag_mv[] = {'m', 'v'};
+        const uint8_t * mv_array = bam_aux_get(aln, tag_mv);
+        if(!mv_array){
+            ERROR("NULL returned for tag mv: %s", "");
+            exit(EXIT_FAILURE);
+        }
+        int stride;
+        uint32_t move_len;
+        if( (char)mv_array[0] == 'B' && (char)mv_array[1] == 'c') {
+            move_len = bam_auxB_len(mv_array);
+            if (move_len == 0) {
+                ERROR("mv array length is 0: %s", "");
+                exit(EXIT_FAILURE);
+            }
+            LOG_DEBUG("len_mv:%d\n", move_len);
+            stride = bam_auxB2i(mv_array, 0);
+            if ( stride != EXPECTED_STRIDE) {
+                ERROR("expected stride of %d is missing.", EXPECTED_STRIDE);
+                exit(EXIT_FAILURE);
+            }
+        } else{
+            ERROR("tag 'mv' specification is incorrect%s", "");
+            exit(EXIT_FAILURE);
+        }
+
+        std::string read_id(bam_get_qname(aln));
+        fprintf(stderr,"%s\n", read_id.c_str());
+        int32_t fastq_len = aln->core.l_qseq;
+        uint8_t*  bam_seq_ptr = bam_get_seq(aln);
+        std::string alphabet = "NACNGNNNT";
+        std::string fastq_seq = "";
+        for(int i=0; i<fastq_len; i++){
+//            fprintf(stderr,"%d", bam_seqi(bam_seq_ptr,i));
+//            fprintf(stderr,"%c", alphabet[bam_seqi(bam_seq_ptr,i)]);
+            fastq_seq.push_back(alphabet[bam_seqi(bam_seq_ptr,i)]);
+        }
+
+        VERBOSE("%s\n",read_id.c_str());
+        VERBOSE("%s\t%" PRIu32 "\t%" PRIu64 "\t%" PRIu64 "\t%d\n",read_id.c_str(),fastq_len,signal_len,trim_offset,stride);
+
+        ret = slow5_get(read_id.c_str(), &rec, sp);
+        if(ret < 0){
+            fprintf(stderr,"Error in when fetching the read\n");
+            exit(EXIT_FAILURE);
+        }
+        uint64_t len_raw_signal = rec->len_raw_signal;
+        std::vector<double> raw_signal(len_raw_signal);
+        assert(len_raw_signal==signal_len);
+        assert((uint64_t)trim_offset < len_raw_signal);
+        len_raw_signal = len_raw_signal - trim_offset;
+        for(uint64_t i=0;i<len_raw_signal;i++){
+            double pA = TO_PICOAMPS(rec->raw_signal[i+trim_offset],rec->digitisation,rec->offset,rec->range);
+            raw_signal[i] = pA;
+//                printf("%f ",pA);
+        }
+        //calculate medmad
+        if(opt.signal_scale == medmad_scale){
+            double read_median = calc_median(raw_signal.data(), len_raw_signal);
+            if(read_median == NAN){
+                continue;
+            }
+            double read_mad = calc_madf(raw_signal.data(),len_raw_signal, &read_median);
+            if(read_mad == NAN){
+                continue;
+            }
+            read_mad = (read_mad > 1.0) ? read_mad : 1.0;
+
+            for(uint64_t i=0;i<len_raw_signal;i++){
+                raw_signal[i] = (raw_signal[i]-read_median) / read_mad;
+            }
+        }
+
+        if(fastq_len < 10){
+            fprintf(stderr,"\t%d", fastq_len);
+            continue;
+        }
+        uint32_t move_count = 0;
+        size_t move_idx=0;
+        size_t start_move_idx = 0;
+        while(move_count < opt.move_start_offset + 1){
+            int8_t value = bam_auxB2i(mv_array, move_idx+1);
+            if(value == 1){
+                move_count++;
+                start_move_idx = move_idx;
+            }
+            move_idx++;
+        }
+        move_idx = start_move_idx + 1;
+        size_t seq_start = opt.kmer_start_offset;
+        for(;move_idx<=move_len;move_idx++){
+            int8_t value = bam_auxB2i(mv_array, move_idx+1);
+            if(value == 1){
+                std::string kmer = fastq_seq.substr(seq_start, opt.kmer_size);
+                int raw_start_local = start_move_idx*stride;
+                int raw_end_local = move_idx*stride;
+                start_move_idx = move_idx;
+                seq_start++;
+
+                if (kmer_frequency_map.find(kmer) == kmer_frequency_map.end()) {
+                    continue;
+                }
+                if(kmer_frequency_map[kmer] == opt.sample_limit){
+                    continue;
+                }
+                if(raw_start_local-opt.signal_print_margin < 0){
+                    raw_start_local = 0;
+                } else{
+                    raw_start_local = raw_start_local - opt.signal_print_margin;
+                }
+                if(raw_end_local+opt.signal_print_margin > len_raw_signal){
+                    raw_end_local = len_raw_signal;
+                } else{
+                    raw_end_local = raw_end_local + opt.signal_print_margin;
+                }
+//                fprintf(stdout,"%d\t%d\n", raw_start_local, raw_end_local);
+                std::vector<double> raw_signal_local(raw_signal.begin()+raw_start_local,raw_signal.begin()+raw_end_local);
+
+//                double max = *std::max_element(raw_signal_local.begin(),raw_signal_local.end());
+//                double min = *std::min_element(raw_signal_local.begin(),raw_signal_local.end());
+//                if(max-min > MAX_MIN_THRESHOLD){
+//                    continue;
+//                }
+
+                size_t raw_signal_kmer_length = raw_signal_local.size();
+                size_t k;
+                for(k=0;k<raw_signal_kmer_length-1;k++){
+                    fprintf(kmer_file_pointer_array[kmer],"%.8f,", raw_signal_local[k]);
+//                    fprintf(stdout, "%.8f,", raw_signal_local[k]);
+                }
+                fprintf(kmer_file_pointer_array[kmer],"%.8f;", raw_signal_local[k]);
+//                fprintf(stdout, "%.8f\n", raw_signal_local[k]);
+                kmer_frequency_map[kmer] = kmer_frequency_map[kmer] + 1;
+                if(seq_start+opt.kmer_size > fastq_seq.size()){
+                    break;
+                }
+            }
+        }
+        delimit_kmer_files(&kmer_file_pointer_array, kmers, &opt);
+        if(count_reads == PROGRESS_BATCH_SIZE){
+            fprintf(stderr,"*");
+            count_reads = 0;
+        }
+        count_reads++;
+    }
+    bam_destroy1(aln);
+    bam_hdr_destroy(bam_hdr);
+    sam_close(bam_fp);
+}
 
 
 

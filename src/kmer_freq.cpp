@@ -95,6 +95,8 @@ int kmer_freq(int argc, char* argv[]) {
         } else if (c=='h'){
             fp_help = stdout;
             fp_help = stdout;
+        }  else if (c=='o'){
+            opt.arg_fname_out = optarg;
         } else if(c == 0 && longindex == 0){ //debug break
             if(atoi(optarg) != 0 && atoi(optarg) != 1 && atoi(optarg) != 2){
                 ERROR("sort argument must be 0,1 or 2 You entered %d", atoi(optarg));
@@ -120,6 +122,18 @@ int kmer_freq(int argc, char* argv[]) {
         }
         exit(EXIT_FAILURE);
     }
+
+    // Parse output argument
+    if (opt.arg_fname_out != NULL) {
+        LOG_DEBUG("opening output file%s","");
+        // Create new file or
+        // Truncate existing file
+        FILE *new_file;
+        new_file = fopen(opt.arg_fname_out, "w");
+        F_CHK(new_file, opt.arg_fname_out);
+        opt.f_out = new_file;
+    }
+
     opt.kmer_size = atoi(argv[optind++]);
     fastq_file = argv[optind];
     fprintf(stderr,"kmer_size: %d\n", opt.kmer_size);
@@ -202,7 +216,7 @@ int kmer_freq(int argc, char* argv[]) {
         if(flag_print_absent_kmers == 0 && pair.second == 0){
             continue;
         }
-        fprintf(stdout, "%s\t%" PRIu64 "\n", pair.first.c_str(), pair.second);
+        fprintf(opt.f_out, "%s\t%" PRIu64 "\n", pair.first.c_str(), pair.second);
     }
 
     return 0;

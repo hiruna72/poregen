@@ -18,6 +18,7 @@
 #include <dirent.h>
 #include <map>
 #include <algorithm>
+#include <htslib/faidx.h>
 
 #ifndef DISABLE_KSORT
 #include "ksort.h"
@@ -26,8 +27,20 @@ KSORT_INIT_GENERIC(double)
 KSORT_INIT_GENERIC(int16_t)
 KSORT_INIT_GENERIC(int)
 #endif
-
-void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers);
+#define MAX_LEN_KMER 2000
+typedef struct{
+    char *rid;
+    int32_t qlen;
+    int32_t query_start;
+    int32_t query_end;
+    int8_t strand;
+    char *tid;
+    int32_t tlen;
+    int32_t target_start;
+    int32_t target_end;
+    uint8_t mapq;
+    char *ss;
+}paf_rec_t;
 
 static struct option long_options[] = {
     {"kmer_size", required_argument, 0, 'k'},           //0 kmer_size [6]
@@ -40,19 +53,24 @@ static struct option long_options[] = {
     {"kmer_file", required_argument, NULL, 0},     //7
     {"index_start", required_argument, NULL, 0},   //8
     {"index_end", required_argument, NULL, 0},     //9
-    {"verbose", required_argument, 0, 'v'},        //10 verbosity level [1]
-    {"help", no_argument, 0, 'h'},                 //11
-    {"version", no_argument, 0, 'V'},              //12
-    {"debug-break",required_argument, 0, 0},       //13 break after processing the first batch (used for debugging)
+    {"fastq", required_argument, NULL, 0},     //10
+    {"verbose", required_argument, 0, 'v'},        //11 verbosity level [1]
+    {"help", no_argument, 0, 'h'},                 //12
+    {"version", no_argument, 0, 'V'},              //13
+    {"debug-break",required_argument, 0, 0},       //14 break after processing the first batch (used for debugging)
     {0, 0, 0, 0}};
 
+void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers);
+void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers, char *input_fastq_file);
+void free_paf_rec(paf_rec_t *paf);
+paf_rec_t *parse_paf_rec(char *buffer);
 
 static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"Usage: poregen gmove reads.blow5 move_table output_dir\n");
     fprintf(fp_help,"\nbasic options:\n");
     fprintf(fp_help,"   -k INT                     kmer_size [%d]\n",opt.kmer_size);
     fprintf(fp_help,"   -m INT                     move start offset [%d]\n",opt.move_start_offset);
-    fprintf(fp_help,"   -s INT                     kmer start offset [%d]\n",opt.move_start_offset);
+    fprintf(fp_help,"   -s INT                     kmer start offset [%d]\n",opt.kmer_start_offset);
     fprintf(fp_help,"   --scaling INT              scaling [%d] (0-no scaling, 1-medmad)\n",opt.signal_scale);
     fprintf(fp_help,"   --margin INT               signal print margin on both sides of the sub signal[%u] \n",opt.signal_print_margin);
     fprintf(fp_help,"   --sample_limit INT         maximum number of instances to output for a kmer [%u] \n",opt.sample_limit);
@@ -60,6 +78,7 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"   --kmer_file FILE           kmer file (optional) \n");
     fprintf(fp_help,"   --index_start INT          1-based closed interval index of start kmer [%u] \n",opt.file_limit);
     fprintf(fp_help,"   --index_end INT            1-based closed interval index of end kmer [%u] \n",opt.file_limit);
+    fprintf(fp_help,"   --fastq FILE               fastq file (optional - should be provided with .paf) \n");
     fprintf(fp_help,"   -h                         help\n");
     fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
     fprintf(fp_help,"   --version                  print version\n");
@@ -170,11 +189,13 @@ int gmove(int argc, char* argv[]) {
     int longindex = 0;
     int32_t c = -1;
     int flag_kmer_file_avail = 0;
+    int flag_fastq_file_avail = 0;
 
     char *slow5file = NULL;
     char *move_table = NULL;
     char *output_dir = NULL;
     char *input_kmer_file = NULL;
+    char *input_fastq_file = NULL;
     int signal_scale = 0;
 
     char dna_set[] = {'A', 'C', 'G', 'T'};
@@ -194,8 +215,8 @@ int gmove(int argc, char* argv[]) {
             }
             opt.kmer_size = atoi(optarg);
         } else if (c == 'm') {
-            if (atoi(optarg) < 1) {
-                ERROR("Move offset should be larger than 0. You entered %d", atoi(optarg));
+            if (atoi(optarg) < 0) {
+                ERROR("signal move offset value must not be less than zero. You entered %d", atoi(optarg));
                 exit(EXIT_FAILURE);
             }
             opt.move_start_offset = atoi(optarg);
@@ -234,7 +255,7 @@ int gmove(int argc, char* argv[]) {
                 exit(EXIT_FAILURE);
             }
             opt.file_limit = atoi(optarg);
-            opt.index_end = opt.index_start + opt.file_limit;
+            opt.index_end = opt.index_start + opt.file_limit - 1;
         } else if (c == 0 && longindex == 7){
             input_kmer_file = optarg;
             flag_kmer_file_avail = 1;
@@ -252,7 +273,10 @@ int gmove(int argc, char* argv[]) {
             }
             opt.index_end = atoi(optarg);
             opt.file_limit = opt.index_end - opt.index_start + 1;
-        } else if (c == 0 && longindex == 13){ //debug break
+        }  else if (c == 0 && longindex == 10){
+            input_fastq_file = optarg;
+            flag_fastq_file_avail = 1;
+        } else if (c == 0 && longindex == 14){ //debug break
             opt.debug_break = atoi(optarg);
         }
     }
@@ -408,21 +432,24 @@ int gmove(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    int flag_paf_file = 0;
     std::string move_table_str = std::string(move_table);
     std::string extension = move_table_str.substr(move_table_str.length()-4, move_table_str.length());
-    if(extension == ".paf"){
-        flag_paf_file = 1;
-    }
 
-    if(flag_paf_file == 1){
+    if(extension == ".paf"){
         //paf parsing
-        fprintf(stderr,"Paf parsing not yet implemented\n");
+        if (flag_fastq_file_avail == 0){
+            fprintf(stderr,".paf input requires an additional .fastq file\n");
+            exit(EXIT_FAILURE);
+        }
+        INFO("%s", "move_start_offset has no effect when using paf format's ss tag");
+        process_move_table_paf(move_table, kmer_file_pointer_array, &sp, &opt, kmer_frequency_map, kmers, input_fastq_file);
+    } else if(extension == ".bam" || extension == ".sam") {
+        //SAM parsing
+        fprintf(stderr,"sam/bam parsing not yet implemented\n");
         exit(EXIT_FAILURE);
     } else{
         process_move_table_file(move_table, kmer_file_pointer_array, &sp, &opt, kmer_frequency_map, kmers);
     }
-
 
     close_kmer_files(&kmer_file_pointer_array, kmers, &opt);
 
@@ -432,6 +459,7 @@ int gmove(int argc, char* argv[]) {
         fprintf(stderr,"Error in opening %s\n", kmer_freq_file_name.c_str());
         exit(EXIT_FAILURE);
     }
+//    fprintf(stdout,"%d\t%d\n", opt.index_start-1, opt.index_end);
     for(uint32_t i=opt.index_start-1;i<opt.index_end;i++){
         fprintf(kmer_freq_file, "%s\t%" PRIu64 "\n", kmers[i].c_str(), kmer_frequency_map[kmers[i]]);
     }
@@ -518,18 +546,23 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
         uint32_t move_count = 0;
         size_t move_idx=0;
         size_t start_move_idx = 0;
-        while(move_count < opt.move_start_offset){
+        while(move_count < opt.move_start_offset + 1){
             if(move_seq[move_idx]=='1'){
                 move_count++;
                 start_move_idx = move_idx;
             }
             move_idx++;
         }
+        int kmer_i_count = 0;
         move_idx = start_move_idx + 1;
         size_t seq_start = opt.kmer_start_offset;
         for(;move_idx<=move_len;move_idx++){
             if(move_seq[move_idx]=='1'){
                 std::string kmer = fastq_seq.substr(seq_start, opt.kmer_size);
+//                fprintf(stdout,"%s\n",kmer.c_str());
+                if (kmer == "CTCAAA"){
+                    kmer_i_count++;
+                }
 //                fprintf(stdout,"%s\n", kmer.c_str());
                 int raw_start_local = start_move_idx*stride;
                 int raw_end_local = move_idx*stride;
@@ -553,7 +586,7 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
                     raw_end_local = raw_end_local + opt.signal_print_margin;
                 }
 //                fprintf(stdout,"%d\t%d\n", raw_start_local, raw_end_local);
-
+//                fprintf(stdout,"%d\t%d\n",raw_start_local, raw_end_local);
                 std::vector<double> raw_signal_local(raw_signal.begin()+raw_start_local,raw_signal.begin()+raw_end_local);
 
 //                double max = *std::max_element(raw_signal_local.begin(),raw_signal_local.end());
@@ -576,6 +609,7 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
                 }
             }
         }
+        fprintf(stdout,"kmer_i_count=%d\n", kmer_i_count);
         delimit_kmer_files(&kmer_file_pointer_array, kmers, &opt);
         if(count_reads == PROGRESS_BATCH_SIZE){
             fprintf(stderr,"*");
@@ -588,7 +622,292 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
         free(line);
     }
 }
+void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers, char *input_fastq_file){
+    slow5_file_t *sp = *sp_ptr;
+    slow5_rec_t *rec = NULL;
+    int ret=0;
 
+    opt_t opt =  *opt_ptr;
+    FILE * basecall_fp = NULL;
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+
+    basecall_fp = fopen(move_table, "r");
+    if (basecall_fp == NULL){
+        fprintf(stderr,"Error in opening file %s\n", move_table);
+        exit(EXIT_FAILURE);
+    }
+
+    faidx_t * m_fai = fai_load(input_fastq_file);
+    if (m_fai == NULL){
+        fprintf(stderr,"Error in loading fastq index for %s\n", input_fastq_file);
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(stderr,"101\n");
+
+    int count_reads = 0;
+    while ((read = getline(&line, &len, basecall_fp)) != -1) {
+
+        paf_rec_t *paf = parse_paf_rec(line);
+        std::string read_id(paf->rid);
+
+        int fastq_len;
+        char* seq;
+        // this call is not threadsafe
+        seq = fai_fetch(m_fai, read_id.c_str(), &fastq_len);
+        if(seq == NULL) {
+            fprintf(stderr,"Error in fetching the fastq sequence for read: %s\n", paf->rid);
+            exit(EXIT_FAILURE);
+        }
+
+        std::string fastq_seq(seq);
+        free(seq);
+        int32_t trim_offset = paf->query_start;
+
+        VERBOSE("%s\n",read_id.c_str());
+        VERBOSE("%s\t%d\t%" PRIu32 "\n", read_id.c_str(), fastq_len, trim_offset);
+
+        ret = slow5_get(read_id.c_str(), &rec, sp);
+        if(ret < 0){
+            fprintf(stderr,"Error in when fetching the read\n");
+            exit(EXIT_FAILURE);
+        }
+        uint64_t len_raw_signal = rec->len_raw_signal;
+        std::vector<double> raw_signal(len_raw_signal);
+        assert((uint64_t)trim_offset < len_raw_signal);
+        len_raw_signal = len_raw_signal - trim_offset;
+        for(uint64_t i=0;i<len_raw_signal;i++){
+            double pA = TO_PICOAMPS(rec->raw_signal[i+trim_offset],rec->digitisation,rec->offset,rec->range);
+            raw_signal[i] = pA;
+//                printf("%f ",pA);
+        }
+        //calculate medmad
+        if(opt.signal_scale == medmad_scale){
+            double read_median = calc_median(raw_signal.data(), len_raw_signal);
+            if(read_median == NAN){
+                continue;
+            }
+            double read_mad = calc_madf(raw_signal.data(),len_raw_signal, &read_median);
+            if(read_mad == NAN){
+                continue;
+            }
+            read_mad = (read_mad > 1.0) ? read_mad : 1.0;
+
+            for(uint64_t i=0;i<len_raw_signal;i++){
+                raw_signal[i] = (raw_signal[i]-read_median) / read_mad;
+            }
+        }
+
+        if(fastq_len < 10){
+            fprintf(stderr,"\t%d", fastq_len);
+            continue;
+        }
+
+        char *ss=paf->ss;
+        size_t start_raw=paf->query_start; size_t end_raw=paf->query_end; //int len_raw_signal=paf->qlen;
+        size_t start_kmer=paf->target_start; size_t end_kmer=paf->target_end;
+//        int len_kmer=paf->tlen;
+        // Raw signal start index for the corresponding k-mer and Raw signal end index for the corresponding k-mer
+        size_t cap = MAX_LEN_KMER;
+        int *st_raw_idx = (int *)malloc(sizeof(int)*cap);
+        MALLOC_CHK(st_raw_idx);
+        int *end_raw_idx = (int *)malloc(sizeof(int)*cap);
+        MALLOC_CHK(end_raw_idx);
+
+        //intialise to -1
+        for(size_t i=0; i<cap; i++){ st_raw_idx[i]=end_raw_idx[i]=-1; }
+
+        size_t st_k = start_kmer; size_t end_k = end_kmer; //if DNA, start k-kmer index is start_kmer column in paf and end k-kmer index is end_kmer column in paf
+        int8_t rna = start_kmer > end_kmer ? 1 : 0; //if RNA start_kmer>end_kmer in paf
+        if (rna){
+            fprintf(stderr,"Error: RNA support is not implemented yet\n");
+            exit(EXIT_FAILURE);
+        }
+        if(rna){ st_k = end_kmer; end_k = start_kmer; } //if RNA, start k-kmer index is end_kmer column in paf and end k-kmer index is start_kmer column in paf
+
+        size_t i_k = st_k; size_t i_raw = start_raw; //current k-mer index and current raw signal index
+
+        //buffer for storing digits preceding each operation and its index
+        char buff[11]; int i_buff=0;
+        while(*ss){
+            if(*ss==',' || *ss=='I' || *ss=='D'){
+                if(i_buff <= 0){ fprintf(stderr,"Bad ss: Preceding digit missing\n"); exit(1); }//if nothing in buff
+
+                buff[i_buff]=0; //null terminate buff
+                int num = atoi(buff);
+                if(num < 0){ fprintf(stderr,"Bad ss: Cannot have negative numbers\n"); exit(1); }
+                i_buff=0; buff[0]=0; //reset buff
+
+                if(*ss=='I'){ //if an insertion, current raw signal index is incremented by num
+                    i_raw += num;
+                } else if(*ss=='D'){ //if an deletion, current k-mer index is incremented by num
+                    i_k += num;
+                } else if (*ss==','){ //if a mapping, increment accordingly and set raw signal indices for the current k-mer
+                    end_raw_idx[i_k] = i_raw; i_raw += num;
+                    st_raw_idx[i_k] = i_raw; i_k++;
+                }
+                if(i_k >= cap){
+                    st_raw_idx=(int *)realloc(st_raw_idx, sizeof(int)*cap*2);
+                    MALLOC_CHK(st_raw_idx);
+                    end_raw_idx=(int *)realloc(end_raw_idx, sizeof(int)*cap*2);
+                    MALLOC_CHK(end_raw_idx);
+                    for(size_t i=cap; i<cap*2; i++){ st_raw_idx[i]=end_raw_idx[i]=-1; }
+                    cap *= 2;
+                }
+            } else {
+                if(!isdigit(*ss)){ fprintf(stderr,"Bad ss: A non-digit found when expected a digit\n"); exit(1); }
+                buff[i_buff++]=*ss;
+            }
+            ss++;
+        }
+
+        if(i_raw!=end_raw){ fprintf(stderr,"Bad ss: Signal end mismatch\n"); exit(1); } //current raw signal index should be equal to end_raw
+        if(i_k!=end_k){ fprintf(stderr,"Bad ss: Kmer end mismatch\n"); exit(1); } //current k-mer index should be equal to end_k
+
+        for(size_t i=st_k; i<end_k; i++){
+            if(end_raw_idx[i]==-1){
+                if(st_raw_idx[i] != -1) { fprintf(stderr,"Bad ss: This shoud not have happened\n"); exit(1); }//if st_raw_idx[i] is -1, then end_raw_idx[i] should also be -1
+//                printf("%s\t%d\t.\t.\n", paf->rid, rna ? len_kmer-i-1 : i);
+            }else {
+//                printf("%s\t%d\t%d\t%d\n", paf->rid, rna ? len_kmer-i-1 : i, end_raw_idx[i], st_raw_idx[i]);
+                std::string kmer = fastq_seq.substr(i, opt.kmer_size);
+                int raw_start_local = end_raw_idx[i];
+                int raw_end_local = st_raw_idx[i];
+                if (kmer_frequency_map.find(kmer) == kmer_frequency_map.end()) {
+                    continue;
+                }
+                if(kmer_frequency_map[kmer] == opt.sample_limit){
+                    continue;
+                }
+                if(raw_start_local-opt.signal_print_margin < 0){
+                    raw_start_local = 0;
+                } else{
+                    raw_start_local = raw_start_local - opt.signal_print_margin;
+                }
+                if(raw_end_local+opt.signal_print_margin > len_raw_signal){
+                    raw_end_local = len_raw_signal;
+                } else{
+                    raw_end_local = raw_end_local + opt.signal_print_margin;
+                }
+//                printf("%d\t%d\n", end_raw_idx[i], st_raw_idx[i]);
+                std::vector<double> raw_signal_local(raw_signal.begin()+raw_start_local,raw_signal.begin()+raw_end_local);
+                size_t raw_signal_kmer_length = raw_signal_local.size();
+                size_t k;
+                for(k=0;k<raw_signal_kmer_length-1;k++){
+                    fprintf(kmer_file_pointer_array[kmer],"%.8f,", raw_signal_local[k]);
+                }
+                fprintf(kmer_file_pointer_array[kmer],"%.8f;", raw_signal_local[k]);
+                kmer_frequency_map[kmer] = kmer_frequency_map[kmer] + 1;
+                if(i+opt.kmer_size > fastq_seq.size()){
+                    break;
+                }
+            }
+        }
+
+        free(st_raw_idx);
+        free(end_raw_idx);
+
+        delimit_kmer_files(&kmer_file_pointer_array, kmers, &opt);
+        if(count_reads == PROGRESS_BATCH_SIZE){
+            fprintf(stderr,"*");
+            count_reads = 0;
+        }
+        count_reads++;
+        free_paf_rec(paf);
+    }
+    fclose(basecall_fp);
+    if (line){
+        free(line);
+    }
+    return;
+
+}
+
+paf_rec_t *parse_paf_rec(char *buffer){
+
+    char *pch=NULL;
+
+    paf_rec_t *paf = (paf_rec_t *)malloc(sizeof(paf_rec_t));
+    MALLOC_CHK(paf);
+
+    //read name
+    pch = strtok (buffer,"\t\r\n"); assert(pch!=NULL);
+    paf->rid = strdup(pch);
+
+    //readlen
+    pch = strtok (NULL,"\t\r\n"); assert(pch!=NULL);
+    paf->qlen = atoi(pch);
+
+    //query start
+    pch = strtok (NULL,"\t\r\n"); assert(pch!=NULL);
+    paf->query_start = atoi(pch);
+
+    //query end
+    pch = strtok (NULL,"\t\r\n"); assert(pch!=NULL);
+    paf->query_end= atoi(pch);
+
+    //relative strand
+    pch = strtok (NULL,"\t\r\n"); assert(pch!=NULL);
+    if(strcmp(pch,"+")==0){
+        paf->strand=0;
+    }
+    else if(strcmp(pch,"-")==0){
+        paf->strand=1;
+    }
+    else{
+        assert(0);
+    }
+
+    //targetname
+    pch = strtok (NULL,"\t\r\n"); assert(pch!=NULL);
+    paf->tid = strdup(pch);
+
+    //target len
+    pch = strtok (NULL,"\t\r\n"); assert(pch!=NULL);
+    paf->tlen = atoi(pch);
+
+    //target start
+    pch = strtok (NULL,"\t\r\n"); assert(pch!=NULL);
+    paf->target_start = atoi(pch);
+
+    //target end
+    pch = strtok (NULL,"\t\r\n"); assert(pch!=NULL);
+    paf->target_end= atoi(pch);
+
+    //num residue
+    pch = strtok (NULL,"\t\r\n"); assert(pch!=NULL);
+
+    //num block
+    pch = strtok (NULL,"\t\r\n"); assert(pch!=NULL);
+
+    //mapq
+    pch = strtok (NULL,"\t\r\n"); assert(pch!=NULL);
+    paf->mapq = atoi(pch);
+
+    paf->ss = NULL;
+    while((pch = strtok(NULL,"\t\r\n"))){
+        if(strncmp("ss:Z:",pch,5)==0){
+            //fprintf(stderr,"ss:Z:%s\n",pch);
+            paf->ss = strdup(pch+5);
+        }
+    }
+    //error check
+    if(paf->ss==NULL){
+        ERROR("ss:Z: tag not found in paf record for %s", paf->rid);
+        exit(EXIT_FAILURE);
+    }
+
+    return paf;
+}
+
+void free_paf_rec(paf_rec_t *paf){
+    free(paf->rid);
+    free(paf->tid);
+    free(paf->ss);
+    free(paf);
+}
 
 
 

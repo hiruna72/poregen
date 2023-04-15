@@ -51,30 +51,59 @@ ex && die "testcase:$TESTCASE failed"
 
 TESTCASE=2
 info "testcase:$TESTCASE - input:table"
-ex "${RAW_DIR}/table_format/reads.slow5" "${RAW_DIR}/table_format/guppy_move" --file_limit 50 ${OUTPUT_DIR}/${TESTCASE} || die "testcase:$TESTCASE failed"
+ex "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_move" --file_limit 50 ${OUTPUT_DIR}/${TESTCASE} || die "testcase:$TESTCASE failed"
 
 TESTCASE=3
-info "testcase:$TESTCASE - input:paf"
-ex "${RAW_DIR}/paf_format/reads.slow5" "${RAW_DIR}/paf_format/guppy_move.paf" --file_limit 50 ${OUTPUT_DIR}/${TESTCASE} || die "testcase:$TESTCASE failed"
+info "testcase:$TESTCASE - input:table kmer_file:given"
+ex "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_move" --kmer_file "${RAW_DIR}/single_read/kmer_file.txt" ${OUTPUT_DIR}/${TESTCASE} && die "testcase:$TESTCASE failed"
 
-#TESTCASE=3
-#info "testcase:$TESTCASE - read:1,kmer:9,move:0,output:paf"
-#ex -k9 -m0 -c "${RAW_DIR}/guppy_one_read.bam" > ${OUTPUT_DIR}/out.paf && die "testcase:$TESTCASE failed"
-#
-#TESTCASE=4
-#info "testcase:$TESTCASE - read:1,kmer:9,move:10,output:paf"
-#ex -k9 -m10 -c "${RAW_DIR}/guppy_one_read.bam" > ${OUTPUT_DIR}/out.paf && die "testcase:$TESTCASE failed"
-#
-#TESTCASE=5
-#info "testcase:$TESTCASE - read:1,kmer:1,move:1,output:paf"
-#ex -k1 -m1 -c "${RAW_DIR}/guppy_one_read.bam" > "${OUTPUT_DIR}/r1k1m1.paf" || die "testcase:$TESTCASE failed"
-#diff "${EXP_DIR}/r1k1m1.paf" "${OUTPUT_DIR}/r1k1m1.paf" || die "testcase:${TESTCASE} diff failed"
-#
+TESTCASE=4
+info "testcase:$TESTCASE - input:table kmer_file:given"
+ex -k 6 -m 0 "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_move" --kmer_file "${RAW_DIR}/single_read/kmer_file.txt" ${OUTPUT_DIR}/${TESTCASE} || die "testcase:$TESTCASE failed"
+
+TESTCASE=5
+info "testcase:$TESTCASE - input:paf"
+ex "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_move.paf" --file_limit 50 ${OUTPUT_DIR}/${TESTCASE} && die "testcase:$TESTCASE failed"
+
+TESTCASE=6
+info "testcase:$TESTCASE - input:paf"
+ex "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_move.paf" --file_limit 50 ${OUTPUT_DIR}/${TESTCASE} --fastq "${RAW_DIR}/single_read/read_0.fastq" || die "testcase:$TESTCASE failed"
+
+TESTCASE=7
+info "testcase:$TESTCASE - input:paf kmer_file:given"
+ex -k 6 "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_move.paf" ${OUTPUT_DIR}/${TESTCASE} --fastq "${RAW_DIR}/single_read/read_0.fastq" --kmer_file "${RAW_DIR}/single_read/kmer_file.txt" || die "testcase:$TESTCASE failed"
+
+diff ${OUTPUT_DIR}/4/freq.txt ${OUTPUT_DIR}/7/freq.txt
+diff ${OUTPUT_DIR}/4/dump ${OUTPUT_DIR}/7/dump
 
 info "all $TESTCASE testcases passed"
-rm -r "$OUTPUT_DIR" || die "could not delete $OUTPUT_DIR"
+#rm -r "$OUTPUT_DIR" || die "could not delete $OUTPUT_DIR"
 exit 0
-# If you want to log to the same file: command1 >> log_file 2>&1
-# If you want different files: command1 >> log_file 2>> err_file
-# use ANSI syntax format to view stdout/stderr on SublimeText
-# use bash -n [script] and shellcheck [script] to check syntax
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

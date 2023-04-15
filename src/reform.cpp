@@ -139,8 +139,8 @@ int reform(int argc, char* argv[]) {
         ERROR("kmer length must be a positive integer%s", "")
         return -1;
     }
-    if(opt.move_start_offset < 1){
-        ERROR("signal move offset value must be positive integer%s", "")
+    if(opt.move_start_offset < 0){
+        ERROR("signal move offset value must not be less than zero%s", "")
         return -1;
     }
     if(opt.kmer_size < opt.move_start_offset){
@@ -253,7 +253,7 @@ int reform(int argc, char* argv[]) {
             if(opt.use_paf_format == 0){
                 uint32_t move_count = 0;
                 uint32_t i = 1;
-                while(move_count < opt.move_start_offset){
+                while(move_count < opt.move_start_offset+1){
                     int8_t value = bam_auxB2i(mv_array, i);
                     if(value == 1){
                         move_count++;
@@ -296,7 +296,7 @@ int reform(int argc, char* argv[]) {
                 uint32_t start_idx;
                 uint32_t kmer_idx = 0;
 
-                while(move_count < opt.move_start_offset){
+                while(move_count < opt.move_start_offset+1){
                     int8_t value = bam_auxB2i(mv_array, i);
                     if(value == 1){
                         move_count++;
@@ -308,7 +308,7 @@ int reform(int argc, char* argv[]) {
 
                 uint32_t j = 1;
                 uint64_t l_end_raw = 0;
-                uint32_t len_seq_1 = len_seq+opt.move_start_offset;
+                uint32_t len_seq_1 = len_seq+opt.move_start_offset+1;
                 uint32_t end_idx = j + 1;
                 for(; j<len_mv; j++){
                     int8_t value = bam_auxB2i(mv_array, j);

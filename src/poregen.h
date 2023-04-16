@@ -49,7 +49,7 @@ typedef struct {
 
     int32_t num_thread; //t
     uint32_t kmer_size; //k
-    uint32_t move_start_offset; //m
+    uint32_t sig_move_offset; //m
     uint32_t kmer_start_offset; //m
     uint32_t signal_print_margin;
     uint32_t sample_limit;

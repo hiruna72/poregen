@@ -48,7 +48,7 @@ typedef struct{
 
 static struct option long_options[] = {
     {"kmer_size", required_argument, 0, 'k'},           //0 kmer_size [6]
-    {"move_start_offset", required_argument, 0, 'm'},   //1 move_start_offset [5]
+    {"sig_move_offset", required_argument, 0, 'm'},   //1 sig_move_offset [5]
     {"kmer_start_offset", required_argument, 0, 's'},   //2 kmer_start_offset [0]
     {"scaling", required_argument, NULL, 0},       //3 scaling 1-medmad
     {"margin", required_argument, NULL, 0},        //4
@@ -74,7 +74,7 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"Usage: poregen gmove reads.blow5 move_table output_dir\n");
     fprintf(fp_help,"\nbasic options:\n");
     fprintf(fp_help,"   -k INT                     kmer_size [%d]\n",opt.kmer_size);
-    fprintf(fp_help,"   -m INT                     move start offset [%d]\n",opt.move_start_offset);
+    fprintf(fp_help,"   -m INT                     move start offset [%d]\n",opt.sig_move_offset);
     fprintf(fp_help,"   -s INT                     kmer start offset [%d]\n",opt.kmer_start_offset);
     fprintf(fp_help,"   --scaling INT              scaling [%d] (0-no scaling, 1-medmad)\n",opt.signal_scale);
     fprintf(fp_help,"   --margin INT               signal print margin on both sides of the sub signal[%u] \n",opt.signal_print_margin);
@@ -224,7 +224,7 @@ int gmove(int argc, char* argv[]) {
                 ERROR("signal move offset value must not be less than zero. You entered %d", atoi(optarg));
                 exit(EXIT_FAILURE);
             }
-            opt.move_start_offset = atoi(optarg);
+            opt.sig_move_offset = atoi(optarg);
         } else if (c == 's') {
             if (atoi(optarg) < 1) {
                 ERROR("Kmer offset should be larger than 0. You entered %d", atoi(optarg));
@@ -323,11 +323,11 @@ int gmove(int argc, char* argv[]) {
         ERROR("kmer length must be a positive integer%s", "")
         return -1;
     }
-    if(opt.move_start_offset < 0){
+    if(opt.sig_move_offset < 0){
         ERROR("signal move offset value must not be less than zero%s", "")
         return -1;
     }
-    if(opt.kmer_size <= opt.move_start_offset){
+    if(opt.kmer_size <= opt.sig_move_offset){
         ERROR("signal move offset value must less than the kmer length%s", "")
         return -1;
     }
@@ -400,7 +400,7 @@ int gmove(int argc, char* argv[]) {
     fprintf(stderr,"guppy_sam_output_file: %s\n", move_table);
     fprintf(stderr,"kmer_output_dir: %s\n", output_dir);
     fprintf(stderr,"kmer_size: %d\n", opt.kmer_size);
-    fprintf(stderr,"move_start_offset: %d\n", opt.move_start_offset);
+    fprintf(stderr,"sig_move_offset: %d\n", opt.sig_move_offset);
     fprintf(stderr,"signal_print_margin: %d\n", opt.signal_print_margin);
     fprintf(stderr,"kmer index closed interval : [%d-%d]\n", opt.index_start, opt.index_end);
     fprintf(stderr,"no.of output files: %d\n", opt.file_limit);
@@ -459,7 +459,7 @@ int gmove(int argc, char* argv[]) {
             fprintf(stderr,".paf input requires an additional .fastq file\n");
             exit(EXIT_FAILURE);
         }
-        INFO("%s", "move_start_offset has no effect when using paf format's ss tag");
+        INFO("%s", "sig_move_offset has no effect when using paf format's ss tag");
         process_move_table_paf(move_table, kmer_file_pointer_array, &sp, &opt, kmer_frequency_map, kmers, input_fastq_file);
     } else if(extension == ".bam" || extension == ".sam") {
         //SAM parsing
@@ -563,7 +563,7 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
         uint32_t move_count = 0;
         size_t move_idx=0;
         size_t start_move_idx = 0;
-        while(move_count < opt.move_start_offset + 1){
+        while(move_count < opt.sig_move_offset + 1){
             if(move_seq[move_idx]=='1'){
                 move_count++;
                 start_move_idx = move_idx;
@@ -838,7 +838,6 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
         free(line);
     }
     return;
-
 }
 
 paf_rec_t *parse_paf_rec(char *buffer){
@@ -1039,7 +1038,7 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
         uint32_t move_count = 0;
         size_t move_idx=0;
         size_t start_move_idx = 0;
-        while(move_count < opt.move_start_offset + 1){
+        while(move_count < opt.sig_move_offset + 1){
             int8_t value = bam_auxB2i(mv_array, move_idx+1);
             if(value == 1){
                 move_count++;
@@ -1082,7 +1081,6 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
 //                if(max-min > MAX_MIN_THRESHOLD){
 //                    continue;
 //                }
-
                 size_t raw_signal_kmer_length = raw_signal_local.size();
                 size_t k;
                 for(k=0;k<raw_signal_kmer_length-1;k++){

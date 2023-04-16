@@ -36,7 +36,7 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"Usage: poregen reform basecalled.SAM/BAM\n");
     fprintf(fp_help,"\nbasic options:\n");
     fprintf(fp_help,"   -k, --kmer_length          kmer length [%d]\n",opt.kmer_size);
-    fprintf(fp_help,"   -m, --sig_move_offset      signal move offset [%d]\n",opt.move_start_offset);
+    fprintf(fp_help,"   -m, --sig_move_offset      signal move offset [%d]\n",opt.sig_move_offset);
     fprintf(fp_help,"   -c                         write move table in paf format\n");
 //    fprintf(fp_help,"   -t INT                     number of processing threads [%d]\n",opt.num_thread);
 //    fprintf(fp_help,"   -K INT                     batch size (max number of reads loaded at once) [%d]\n",opt.batch_size);
@@ -98,7 +98,7 @@ int realign(int argc, char* argv[]) {
         if (c == 'k') {
             opt.kmer_size = atoi(optarg);
         } else if (c == 'm') {
-            opt.move_start_offset = atoi(optarg);
+            opt.sig_move_offset = atoi(optarg);
         } else if (c == 'c') {
             opt.use_paf_format = 1;
         } else if (c == 'B') {
@@ -140,11 +140,11 @@ int realign(int argc, char* argv[]) {
         ERROR("kmer length must be non zero%s", "")
         return -1;
     }
-    if(opt.move_start_offset < 1){
+    if(opt.sig_move_offset < 1){
         ERROR("signal move offset value must be non zero%s", "")
         return -1;
     }
-    if(opt.kmer_size < opt.move_start_offset){
+    if(opt.kmer_size < opt.sig_move_offset){
         ERROR("signal move offset value must not be larger than the kmer length%s", "")
         return -1;
     }
@@ -170,7 +170,7 @@ int realign(int argc, char* argv[]) {
 
     fprintf(stderr, "bam_file : %s\n", bam_file_name);
     fprintf(stderr, "kmer length : %" PRIu32 "\n", opt.kmer_size);
-    fprintf(stderr, "signal move offset : %" PRIu32 "\n", opt.move_start_offset);
+    fprintf(stderr, "signal move offset : %" PRIu32 "\n", opt.sig_move_offset);
     if(opt.use_paf_format){
         fprintf(stderr, "output format : %s\n", "paf");
     } else{
@@ -258,7 +258,7 @@ int realign(int argc, char* argv[]) {
             if(opt.use_paf_format == 0){
                 uint32_t move_count = 0;
                 uint32_t i = 1;
-                while(move_count < opt.move_start_offset){
+                while(move_count < opt.sig_move_offset){
                     int8_t value = bam_auxB2i(mv_array, i);
                     if(value == 1){
                         move_count++;
@@ -298,7 +298,7 @@ int realign(int argc, char* argv[]) {
                 uint32_t start_idx;
                 uint32_t kmer_idx = 0;
 
-                while(move_count < opt.move_start_offset){
+                while(move_count < opt.sig_move_offset){
                     int8_t value = bam_auxB2i(mv_array, i);
                     if(value == 1){
                         move_count++;
@@ -310,7 +310,7 @@ int realign(int argc, char* argv[]) {
 
                 uint32_t j = 1;
                 uint64_t l_end_raw = 0;
-                uint32_t len_seq_1 = len_seq+opt.move_start_offset;
+                uint32_t len_seq_1 = len_seq+opt.sig_move_offset;
                 uint32_t end_idx = j + 1;
                 for(; j<len_mv; j++){
                     int8_t value = bam_auxB2i(mv_array, j);

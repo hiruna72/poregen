@@ -570,16 +570,12 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
             }
             move_idx++;
         }
-        int kmer_i_count = 0;
         move_idx = start_move_idx + 1;
         size_t seq_start = opt.kmer_start_offset;
         for(;move_idx<=move_len;move_idx++){
             if(move_seq[move_idx]=='1'){
                 std::string kmer = fastq_seq.substr(seq_start, opt.kmer_size);
 //                fprintf(stdout,"%s\n",kmer.c_str());
-                if (kmer == "CTCAAA"){
-                    kmer_i_count++;
-                }
 //                fprintf(stdout,"%s\n", kmer.c_str());
                 int raw_start_local = start_move_idx*stride;
                 int raw_end_local = move_idx*stride;
@@ -625,7 +621,6 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
                 }
             }
         }
-        fprintf(stdout,"kmer_i_count=%d\n", kmer_i_count);
         delimit_kmer_files(&kmer_file_pointer_array, kmers, &opt);
         if(count_reads == PROGRESS_BATCH_SIZE){
             fprintf(stderr,"*");

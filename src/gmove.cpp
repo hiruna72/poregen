@@ -656,8 +656,6 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
         exit(EXIT_FAILURE);
     }
 
-    fprintf(stderr,"101\n");
-
     int count_reads = 0;
     while ((read = getline(&line, &len, basecall_fp)) != -1) {
 
@@ -980,7 +978,6 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
         }
 
         std::string read_id(bam_get_qname(aln));
-        fprintf(stderr,"%s\n", read_id.c_str());
         int32_t fastq_len = aln->core.l_qseq;
         uint8_t*  bam_seq_ptr = bam_get_seq(aln);
         std::string alphabet = "NACNGNNNT";

@@ -330,10 +330,10 @@ int gmove(int argc, char* argv[]) {
         ERROR("signal move offset value must not be less than zero%s", "")
         return -1;
     }
-    if(opt.kmer_size <= opt.sig_move_offset){
-        ERROR("signal move offset value must less than the kmer length%s", "")
-        return -1;
-    }
+//    if(opt.kmer_size <= opt.sig_move_offset){
+//        ERROR("signal move offset value must less than the kmer length%s", "")
+//        return -1;
+//    }
 
     int ret_create_dir = create_dir(output_dir);
     if(ret_create_dir == -1){

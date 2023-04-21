@@ -173,15 +173,18 @@ static double calc_madf(const double* x, size_t n, const double* med) {
 void close_kmer_files(std::map<std::string, FILE *> *kmer_file_pointer_array_ptr, std::vector<std::string>& kmers, opt_t* opt) {
     std::map<std::string, FILE *> kmer_file_pointer_array = *kmer_file_pointer_array_ptr;
     for(uint32_t i=opt->index_start-1;i<opt->index_end;i++){
-        fclose(kmer_file_pointer_array[kmers[i]]);
+        if(kmer_file_pointer_array[kmers[i]]){
+            fclose(kmer_file_pointer_array[kmers[i]]);
+        }
     }
 }
-
 
 void delimit_kmer_files(std::map<std::string, FILE *> *kmer_file_pointer_array_ptr, std::vector<std::string>& kmers, opt_t* opt) {
     std::map<std::string, FILE *> kmer_file_pointer_array = *kmer_file_pointer_array_ptr;
     for(uint32_t i=opt->index_start-1;i<opt->index_end;i++){
-        fprintf(kmer_file_pointer_array[kmers[i]],":");
+        if(kmer_file_pointer_array[kmers[i]]){
+            fprintf(kmer_file_pointer_array[kmers[i]],":");
+        }
     }
 }
 
@@ -501,8 +504,11 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
         exit(EXIT_FAILURE);
     }
     int count_reads = 0;
-
+    size_t num_kmers_complete = 0;
     while ((read = getline(&line, &len, basecall_fp)) != -1) {
+        if(num_kmers_complete == kmers.size()){
+            break;
+        }
         int fastq_len;
         uint64_t signal_len;
         int trim_offset;
@@ -575,7 +581,6 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
         for(;move_idx<=move_len;move_idx++){
             if(move_seq[move_idx]=='1'){
                 std::string kmer = fastq_seq.substr(seq_start, opt.kmer_size);
-//                fprintf(stdout,"%s\n",kmer.c_str());
 //                fprintf(stdout,"%s\n", kmer.c_str());
                 int raw_start_local = start_move_idx*stride;
                 int raw_end_local = move_idx*stride;
@@ -616,6 +621,12 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
                 fprintf(kmer_file_pointer_array[kmer],"%.8f;", raw_signal_local[k]);
 //                fprintf(stdout, "%.8f\n", raw_signal_local[k]);
                 kmer_frequency_map[kmer] = kmer_frequency_map[kmer] + 1;
+                if(kmer_frequency_map[kmer] == opt.sample_limit){
+                    fclose(kmer_file_pointer_array[kmer]);
+                    kmer_file_pointer_array[kmer] = NULL;
+                    num_kmers_complete++;
+                }
+
                 if(seq_start+opt.kmer_size > fastq_seq.size()){
                     break;
                 }
@@ -632,6 +643,7 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
     if (line){
         free(line);
     }
+    return;
 }
 void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers, char *input_fastq_file){
     slow5_file_t *sp = *sp_ptr;
@@ -657,8 +669,11 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
     }
 
     int count_reads = 0;
+    size_t num_kmers_complete = 0;
     while ((read = getline(&line, &len, basecall_fp)) != -1) {
-
+        if(num_kmers_complete == kmers.size()){
+            break;
+        }
         paf_rec_t *paf = parse_paf_rec(line);
         std::string read_id(paf->rid);
 
@@ -782,6 +797,7 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
             }else {
 //                printf("%s\t%d\t%d\t%d\n", paf->rid, rna ? len_kmer-i-1 : i, end_raw_idx[i], st_raw_idx[i]);
                 std::string kmer = fastq_seq.substr(i, opt.kmer_size);
+//                fprintf(stdout,"%s\n", kmer.c_str());
                 int raw_start_local = end_raw_idx[i];
                 int raw_end_local = st_raw_idx[i];
                 if (kmer_frequency_map.find(kmer) == kmer_frequency_map.end()) {
@@ -809,6 +825,11 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
                 }
                 fprintf(kmer_file_pointer_array[kmer],"%.8f;", raw_signal_local[k]);
                 kmer_frequency_map[kmer] = kmer_frequency_map[kmer] + 1;
+                if(kmer_frequency_map[kmer] == opt.sample_limit){
+                    fclose(kmer_file_pointer_array[kmer]);
+                    kmer_file_pointer_array[kmer] = NULL;
+                    num_kmers_complete++;
+                }
                 if(i+opt.kmer_size > fastq_seq.size()){
                     break;
                 }
@@ -935,7 +956,11 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
         exit(EXIT_FAILURE);
     }
     int count_reads = 0;
+    size_t num_kmers_complete = 0;
     while((ret = sam_read1(bam_fp, bam_hdr, aln)) >= 0){
+        if(num_kmers_complete == kmers.size()){
+            break;
+        }
         const char tag_ns[] = {'n', 's'};
         const uint8_t * ns_ptr = bam_aux_get(aln, tag_ns);
         if(!ns_ptr){
@@ -1082,6 +1107,11 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
                 fprintf(kmer_file_pointer_array[kmer],"%.8f;", raw_signal_local[k]);
 //                fprintf(stdout, "%.8f\n", raw_signal_local[k]);
                 kmer_frequency_map[kmer] = kmer_frequency_map[kmer] + 1;
+                if(kmer_frequency_map[kmer] == opt.sample_limit){
+                    fclose(kmer_file_pointer_array[kmer]);
+                    kmer_file_pointer_array[kmer] = NULL;
+                    num_kmers_complete++;
+                }
                 if(seq_start+opt.kmer_size > fastq_seq.size()){
                     break;
                 }
@@ -1097,6 +1127,7 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
     bam_destroy1(aln);
     bam_hdr_destroy(bam_hdr);
     sam_close(bam_fp);
+    return;
 }
 
 

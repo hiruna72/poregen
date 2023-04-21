@@ -76,14 +76,14 @@ ex -k 6 -m 0 "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_
 TESTCASE=1.2
 info "testcase:$TESTCASE - input:paf kmer_file:given"
 ex -k 6 "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_move.paf" ${OUTPUT_DIR}/${TESTCASE} --fastq "${RAW_DIR}/single_read/read_0.fastq" --kmer_file "${RAW_DIR}/single_read/single_kmer_file.txt" || die "testcase:$TESTCASE failed"
-diff ${OUTPUT_DIR}/${TESTCASE}/freq.txt ${OUTPUT_DIR}/1.1/freq.txt
-diff ${OUTPUT_DIR}/${TESTCASE}/dump ${OUTPUT_DIR}/1.1/dump
+diff ${OUTPUT_DIR}/${TESTCASE}/freq.txt ${OUTPUT_DIR}/1.1/freq.txt || die "failed"
+diff ${OUTPUT_DIR}/${TESTCASE}/dump ${OUTPUT_DIR}/1.1/dump || die "failed"
 
 TESTCASE=1.3
 info "testcase:$TESTCASE - input:bam"
-ex -k6 "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_move.bam" --kmer_file "${RAW_DIR}/single_read/single_kmer_file.txt" ${OUTPUT_DIR}/${TESTCASE} || die "testcase:$TESTCASE failed"
-diff ${OUTPUT_DIR}/${TESTCASE}/freq.txt ${OUTPUT_DIR}/1.1/freq.txt
-diff ${OUTPUT_DIR}/${TESTCASE}/dump ${OUTPUT_DIR}/1.1/dump
+ex -k 6 "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_move.bam" --kmer_file "${RAW_DIR}/single_read/single_kmer_file.txt" ${OUTPUT_DIR}/${TESTCASE} || die "testcase:$TESTCASE failed"
+diff ${OUTPUT_DIR}/${TESTCASE}/freq.txt ${OUTPUT_DIR}/1.1/freq.txt || die "failed"
+diff ${OUTPUT_DIR}/${TESTCASE}/dump ${OUTPUT_DIR}/1.1/dump || die "failed"
 
 TESTCASE=2.1
 info "testcase:$TESTCASE - input:table kmer_file:given"
@@ -92,14 +92,14 @@ ex -k 6 -m 0 "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_
 TESTCASE=2.2
 info "testcase:$TESTCASE - input:paf kmer_file:given"
 ex -k 6 "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_move.paf" ${OUTPUT_DIR}/${TESTCASE} --fastq "${RAW_DIR}/single_read/read_0.fastq" --kmer_file "${RAW_DIR}/single_read/kmer_file.txt" || die "testcase:$TESTCASE failed"
-diff ${OUTPUT_DIR}/${TESTCASE}/freq.txt ${OUTPUT_DIR}/2.1/freq.txt
-diff ${OUTPUT_DIR}/${TESTCASE}/dump ${OUTPUT_DIR}/2.1/dump
+diff ${OUTPUT_DIR}/${TESTCASE}/freq.txt ${OUTPUT_DIR}/2.1/freq.txt || die "failed"
+diff ${OUTPUT_DIR}/${TESTCASE}/dump ${OUTPUT_DIR}/2.1/dump || die "failed"
 
 TESTCASE=2.3
 info "testcase:$TESTCASE - input:bam"
 ex -k6 "${RAW_DIR}/single_read/reads.slow5" "${RAW_DIR}/single_read/guppy_move.bam" --kmer_file "${RAW_DIR}/single_read/kmer_file.txt" ${OUTPUT_DIR}/${TESTCASE} || die "testcase:$TESTCASE failed"
-diff ${OUTPUT_DIR}/${TESTCASE}/freq.txt ${OUTPUT_DIR}/2.1/freq.txt
-diff ${OUTPUT_DIR}/${TESTCASE}/dump ${OUTPUT_DIR}/2.1/dump
+diff ${OUTPUT_DIR}/${TESTCASE}/freq.txt ${OUTPUT_DIR}/2.1/freq.txt || die "failed"
+diff ${OUTPUT_DIR}/${TESTCASE}/dump ${OUTPUT_DIR}/2.1/dump || die "failed"
 
 info "all testcases passed"
 #rm -r "$OUTPUT_DIR" || die "could not delete $OUTPUT_DIR"

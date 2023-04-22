@@ -36,6 +36,7 @@
 #define KMER_INDEX_START 1
 #define NUM_DNA_BASES 4
 #define DEFAULT_KMER_SIZE 9
+#define MAXIMUM_MOVE_DURATION 70
 
 enum signal_scaling{ noscale, medmad_scale };
 
@@ -48,7 +49,8 @@ typedef struct {
     int64_t batch_size_bytes;   //max bytes loaded at once: B
 
     int32_t num_thread; //t
-    uint32_t kmer_size; //k
+    uint32_t kmer_size; //max_dur
+    uint32_t max_dur; //k
     uint32_t sig_move_offset; //m
     uint32_t kmer_start_offset; //m
     uint32_t signal_print_margin;

@@ -31,6 +31,7 @@ KSORT_INIT_GENERIC(int)
 
 #define MAX_LEN_KMER 2000
 #define EXPECTED_STRIDE 5
+#define MAXIMUM_MOVE_DURATION 70
 
 typedef struct{
     char *rid;
@@ -591,6 +592,9 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
                 start_move_idx = move_idx;
                 seq_start++;
 
+                if (raw_end_local - raw_start_local > MAXIMUM_MOVE_DURATION){
+                    continue;
+                }
                 if (kmer_frequency_map.find(kmer) == kmer_frequency_map.end()) {
                     continue;
                 }
@@ -806,6 +810,9 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
 //                fprintf(stdout,"%s\n", kmer.c_str());
                 int raw_start_local = end_raw_idx[i];
                 int raw_end_local = st_raw_idx[i];
+                if (raw_end_local - raw_start_local > MAXIMUM_MOVE_DURATION){
+                    continue;
+                }
                 if (kmer_frequency_map.find(kmer) == kmer_frequency_map.end()) {
                     continue;
                 }
@@ -1082,6 +1089,9 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
                 start_move_idx = move_idx;
                 seq_start++;
 
+                if (raw_end_local - raw_start_local > MAXIMUM_MOVE_DURATION){
+                    continue;
+                }
                 if (kmer_frequency_map.find(kmer) == kmer_frequency_map.end()) {
                     continue;
                 }

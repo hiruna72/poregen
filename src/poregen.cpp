@@ -222,6 +222,7 @@ void init_opt(opt_t* opt) {
     opt->signal_scale = medmad_scale;
     opt->debug_break=-1;
     opt->use_paf_format = 0;
+    opt->delimit_files = 0;
     opt->arg_fname_out = NULL;
     opt->f_out = stdout;
 

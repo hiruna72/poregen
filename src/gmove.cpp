@@ -58,10 +58,11 @@ static struct option long_options[] = {
     {"index_start", required_argument, NULL, 0},   //8
     {"index_end", required_argument, NULL, 0},     //9
     {"fastq", required_argument, NULL, 0},     //10
-    {"verbose", required_argument, 0, 'v'},        //11 verbosity level [1]
-    {"help", no_argument, 0, 'h'},                 //12
-    {"version", no_argument, 0, 'V'},              //13
-    {"debug-break",required_argument, 0, 0},       //14 break after processing the first batch (used for debugging)
+    {"", no_argument, 0, 'c'},                 //11 delimit output files
+    {"verbose", required_argument, 0, 'v'},        //12 verbosity level [1]
+    {"help", no_argument, 0, 'h'},                 //13
+    {"version", no_argument, 0, 'V'},              //14
+    {"debug-break",required_argument, 0, 0},       //15 break after processing the first batch (used for debugging)
     {0, 0, 0, 0}};
 
 void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers);
@@ -84,6 +85,7 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"   --index_start INT          1-based closed interval index of start kmer [%u] \n",opt.file_limit);
     fprintf(fp_help,"   --index_end INT            1-based closed interval index of end kmer [%u] \n",opt.file_limit);
     fprintf(fp_help,"   --fastq FILE               fastq file (optional - should be provided with .paf) \n");
+    fprintf(fp_help,"   -d                         delimit output files per read\n");
     fprintf(fp_help,"   -h                         help\n");
     fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
     fprintf(fp_help,"   --version                  print version\n");
@@ -192,7 +194,7 @@ int gmove(int argc, char* argv[]) {
 
 //    fprintf(stderr,"%d", get_log_level());
 
-    const char* optstring = "k:m:s:";
+    const char* optstring = "k:m:s:d";
 
     int longindex = 0;
     int32_t c = -1;
@@ -234,6 +236,8 @@ int gmove(int argc, char* argv[]) {
                 exit(EXIT_FAILURE);
             }
             opt.kmer_start_offset = atoi(optarg);
+        } else if (c == 'd') {
+            opt.delimit_files = 1;
         } else if (c=='v'){
             int v = atoi(optarg);
             set_log_level((enum poregen_log_level_opt)v);
@@ -284,7 +288,7 @@ int gmove(int argc, char* argv[]) {
         }  else if (c == 0 && longindex == 10){
             input_fastq_file = optarg;
             flag_fastq_file_avail = 1;
-        } else if (c == 0 && longindex == 14){ //debug break
+        } else if (c == 0 && longindex == 15){ //debug break
             opt.debug_break = atoi(optarg);
         }
     }
@@ -632,7 +636,9 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
                 }
             }
         }
-        delimit_kmer_files(&kmer_file_pointer_array, kmers, &opt);
+        if(opt.delimit_files == 1){
+            delimit_kmer_files(&kmer_file_pointer_array, kmers, &opt);
+        }
         if(count_reads == PROGRESS_BATCH_SIZE){
             fprintf(stderr,"*");
             count_reads = 0;
@@ -839,7 +845,9 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
         free(st_raw_idx);
         free(end_raw_idx);
 
-        delimit_kmer_files(&kmer_file_pointer_array, kmers, &opt);
+        if(opt.delimit_files == 1){
+            delimit_kmer_files(&kmer_file_pointer_array, kmers, &opt);
+        }
         if(count_reads == PROGRESS_BATCH_SIZE){
             fprintf(stderr,"*");
             count_reads = 0;
@@ -1117,7 +1125,9 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
                 }
             }
         }
-        delimit_kmer_files(&kmer_file_pointer_array, kmers, &opt);
+        if(opt.delimit_files == 1){
+            delimit_kmer_files(&kmer_file_pointer_array, kmers, &opt);
+        }
         if(count_reads == PROGRESS_BATCH_SIZE){
             fprintf(stderr,"*");
             count_reads = 0;

@@ -59,6 +59,7 @@ typedef struct {
     enum signal_scaling signal_scale;
     int32_t debug_break;
     uint8_t use_paf_format;
+    uint8_t delimit_files;
     char *arg_fname_out;
 
 

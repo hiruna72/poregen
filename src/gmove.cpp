@@ -1056,12 +1056,17 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
         assert(len_raw_signal==signal_len);
         assert((uint64_t)trim_offset < len_raw_signal);
         len_raw_signal = len_raw_signal - trim_offset;
+        int flag_skip_signal = 0;
         for(uint64_t i=0;i<len_raw_signal;i++){
             double pA = TO_PICOAMPS(rec->raw_signal[i+trim_offset],rec->digitisation,rec->offset,rec->range);
             if(pA < opt.pa_min || pA > opt.pa_max){
-                continue;
+                flag_skip_signal = 1;
+                break;
             }
             raw_signal[i] = pA;
+        }
+        if(flag_skip_signal == 1){
+            continue;
         }
         //calculate medmad
         if(opt.signal_scale == medmad_scale){

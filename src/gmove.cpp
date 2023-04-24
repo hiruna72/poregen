@@ -59,11 +59,13 @@ static struct option long_options[] = {
     {"index_end", required_argument, NULL, 0},     //9
     {"fastq", required_argument, NULL, 0},     //10
     {"", no_argument, 0, 'd'},                 //11 delimit output files
-    {"max_dur", required_argument, 0, 0},           //12 maximum move duration
-    {"verbose", required_argument, 0, 'v'},        //13 verbosity level [1]
-    {"help", no_argument, 0, 'h'},                 //14
-    {"version", no_argument, 0, 'V'},              //15
-    {"debug-break",required_argument, 0, 0},       //16 break after processing the first batch (used for debugging)
+    {"max_dur", required_argument, 0, 0},           //12
+    {"pa_min", required_argument, 0, 0},           //13
+    {"pa_max", required_argument, 0, 0},           //14
+    {"verbose", required_argument, 0, 'v'},        //15 verbosity level [1]
+    {"help", no_argument, 0, 'h'},                 //16
+    {"version", no_argument, 0, 'V'},              //17
+    {"debug-break",required_argument, 0, 0},       //18 break after processing the first batch (used for debugging)
     {0, 0, 0, 0}};
 
 void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers);
@@ -88,6 +90,8 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"   --fastq FILE               fastq file (optional - should be provided with .paf) \n");
     fprintf(fp_help,"   -d                         delimit output files per read\n");
     fprintf(fp_help,"   --max_dur                  maximum move duration allowed for samples [%d]\n",opt.max_dur);
+    fprintf(fp_help,"   --pa_min                   minimum pA level a sampling signal should have [%.3f]\n",opt.pa_min);
+    fprintf(fp_help,"   --pa_madx                  maximum pA level a sampling signal should have [%.3f]\n",opt.pa_max);
     fprintf(fp_help,"   -h                         help\n");
     fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
     fprintf(fp_help,"   --version                  print version\n");
@@ -292,7 +296,11 @@ int gmove(int argc, char* argv[]) {
             flag_fastq_file_avail = 1;
         } else if (c == 0 && longindex == 12){
             opt.max_dur = atoi(optarg);
-        } else if (c == 0 && longindex == 16){ //debug break
+        } else if (c == 0 && longindex == 13){
+            opt.pa_min = atof(optarg);
+        } else if (c == 0 && longindex == 14){
+            opt.pa_max = atof(optarg);
+        } else if (c == 0 && longindex == 18){ //debug break
             opt.debug_break = atoi(optarg);
         }
     }
@@ -426,7 +434,7 @@ int gmove(int argc, char* argv[]) {
             fprintf(stderr,"Error in opening %dth kmer-file %s\n", count_kmers, output_path.c_str());
             exit(EXIT_FAILURE);
         }
-        fprintf(kmer_output,"%.8f,", 0.0);
+//        fprintf(kmer_output,"%.8f,", 0.0);
         kmer_file_pointer_array[kmers[i]] = kmer_output;
         count_kmers++;
     }
@@ -550,8 +558,10 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
         len_raw_signal = len_raw_signal - trim_offset;
         for(uint64_t i=0;i<len_raw_signal;i++){
             double pA = TO_PICOAMPS(rec->raw_signal[i+trim_offset],rec->digitisation,rec->offset,rec->range);
+            if(pA < opt.pa_min || pA > opt.pa_max){
+                continue;
+            }
             raw_signal[i] = pA;
-//                printf("%f ",pA);
         }
         //calculate medmad
         if(opt.signal_scale == medmad_scale){
@@ -717,8 +727,10 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
         len_raw_signal = len_raw_signal - trim_offset;
         for(uint64_t i=0;i<len_raw_signal;i++){
             double pA = TO_PICOAMPS(rec->raw_signal[i+trim_offset],rec->digitisation,rec->offset,rec->range);
+            if(pA < opt.pa_min || pA > opt.pa_max){
+                continue;
+            }
             raw_signal[i] = pA;
-//                printf("%f ",pA);
         }
         //calculate medmad
         if(opt.signal_scale == medmad_scale){
@@ -1046,8 +1058,10 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
         len_raw_signal = len_raw_signal - trim_offset;
         for(uint64_t i=0;i<len_raw_signal;i++){
             double pA = TO_PICOAMPS(rec->raw_signal[i+trim_offset],rec->digitisation,rec->offset,rec->range);
+            if(pA < opt.pa_min || pA > opt.pa_max){
+                continue;
+            }
             raw_signal[i] = pA;
-//                printf("%f ",pA);
         }
         //calculate medmad
         if(opt.signal_scale == medmad_scale){

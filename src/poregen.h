@@ -37,6 +37,8 @@
 #define NUM_DNA_BASES 4
 #define DEFAULT_KMER_SIZE 9
 #define MAXIMUM_MOVE_DURATION 70
+#define PA_MAX 180.0
+#define PA_MIN 40.0
 
 enum signal_scaling{ noscale, medmad_scale };
 
@@ -49,21 +51,24 @@ typedef struct {
     int64_t batch_size_bytes;   //max bytes loaded at once: B
 
     int32_t num_thread; //t
-    uint32_t kmer_size; //max_dur
-    uint32_t max_dur; //k
-    uint32_t sig_move_offset; //m
+    uint32_t kmer_size; //k
     uint32_t kmer_start_offset; //m
-    uint32_t signal_print_margin;
-    uint32_t sample_limit;
     uint32_t file_limit;
     uint32_t index_start;
     uint32_t index_end;
-    enum signal_scaling signal_scale;
     int32_t debug_break;
     uint8_t use_paf_format;
     uint8_t delimit_files;
     char *arg_fname_out;
 
+    //signal_related
+    uint32_t max_dur; //max_dur
+    uint32_t sig_move_offset; //m
+    uint32_t signal_print_margin;
+    uint32_t sample_limit;
+    enum signal_scaling signal_scale;
+    double pa_max;
+    double pa_min;
 
 } opt_t;
 

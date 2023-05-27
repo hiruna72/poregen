@@ -62,10 +62,11 @@ static struct option long_options[] = {
     {"max_dur", required_argument, 0, 0},           //12
     {"pa_min", required_argument, 0, 0},           //13
     {"pa_max", required_argument, 0, 0},           //14
-    {"verbose", required_argument, 0, 'v'},        //15 verbosity level [1]
-    {"help", no_argument, 0, 'h'},                 //16
-    {"version", no_argument, 0, 'V'},              //17
-    {"debug-break",required_argument, 0, 0},       //18 break after processing the first batch (used for debugging)
+    {"rna", no_argument, 0, 0},                     //15
+    {"verbose", required_argument, 0, 'v'},        //16 verbosity level [1]
+    {"help", no_argument, 0, 'h'},                 //17
+    {"version", no_argument, 0, 'V'},              //18
+    {"debug-break",required_argument, 0, 0},       //19 break after processing the first batch (used for debugging)
     {0, 0, 0, 0}};
 
 void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers);
@@ -92,6 +93,7 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"   --max_dur                  maximum move duration allowed for samples [%d]\n",opt.max_dur);
     fprintf(fp_help,"   --pa_min                   minimum pA level a sampling signal should have [%.3f]\n",opt.pa_min);
     fprintf(fp_help,"   --pa_madx                  maximum pA level a sampling signal should have [%.3f]\n",opt.pa_max);
+    fprintf(fp_help,"   --rna                      dataset is rna\n");
     fprintf(fp_help,"   -h                         help\n");
     fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
     fprintf(fp_help,"   --version                  print version\n");
@@ -215,6 +217,7 @@ int gmove(int argc, char* argv[]) {
     int signal_scale = 0;
 
     char dna_set[] = {'A', 'C', 'G', 'T'};
+    char rna_set[] = {'A', 'C', 'G', 'U'};
 
     FILE *fp_help = stderr;
 
@@ -300,7 +303,9 @@ int gmove(int argc, char* argv[]) {
             opt.pa_min = atof(optarg);
         } else if (c == 0 && longindex == 14){
             opt.pa_max = atof(optarg);
-        } else if (c == 0 && longindex == 18){ //debug break
+        } else if (c == 0 && longindex == 15){
+            opt.flag_rna = 1;
+        } else if (c == 0 && longindex == 19){ //debug break
             opt.debug_break = atoi(optarg);
         }
     }
@@ -397,7 +402,11 @@ int gmove(int argc, char* argv[]) {
         fclose(input_kmer_file_ptr);
 
     }else{
-        generate_kmers(dna_set, "", NUM_DNA_BASES, opt.kmer_size, kmers);
+        if(opt.flag_rna){
+            generate_kmers(rna_set, "", NUM_DNA_BASES, opt.kmer_size, kmers);
+        }else{
+            generate_kmers(dna_set, "", NUM_DNA_BASES, opt.kmer_size, kmers);
+        }
     }
 
     uint32_t num_kmers = kmers.size();
@@ -422,6 +431,11 @@ int gmove(int argc, char* argv[]) {
     fprintf(stderr,"signal_print_margin: %d\n", opt.signal_print_margin);
     fprintf(stderr,"kmer index closed interval : [%d-%d]\n", opt.index_start, opt.index_end);
     fprintf(stderr,"no.of output files: %d\n", opt.file_limit);
+    if(opt.flag_rna){
+        fprintf(stderr,"dataset: RNA\n");
+    }else{
+        fprintf(stderr,"dataset: DNA\n");
+    }
 
     std::map<std::string,FILE*> kmer_file_pointer_array;
     uint32_t count_kmers = 1;
@@ -770,7 +784,10 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
         size_t st_k = start_kmer; size_t end_k = end_kmer; //if DNA, start k-kmer index is start_kmer column in paf and end k-kmer index is end_kmer column in paf
         int8_t rna = start_kmer > end_kmer ? 1 : 0; //if RNA start_kmer>end_kmer in paf
         if(rna){ st_k = end_kmer; end_k = start_kmer; } //if RNA, start k-kmer index is end_kmer column in paf and end k-kmer index is start_kmer column in paf
-
+        if(rna && opt.flag_rna == 0){
+            ERROR("Data is detected as RNA. Please provide --rna%s", "");
+            exit(1);
+        }
         size_t i_k = st_k; size_t i_raw = start_raw; //current k-mer index and current raw signal index
 
         //buffer for storing digits preceding each operation and its index

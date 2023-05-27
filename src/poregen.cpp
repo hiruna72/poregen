@@ -230,6 +230,8 @@ void init_opt(opt_t* opt) {
     opt->pa_max = PA_MAX;
     opt->pa_min = PA_MIN;
 
+    opt->flag_rna = 0;
+
 }
 
 

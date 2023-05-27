@@ -47,6 +47,7 @@ typedef struct {
     FILE *f_out;
 
     uint32_t flag;              //flags
+    uint32_t flag_rna;          //RNA flag
     int32_t batch_size;         //max reads loaded at once: K
     int64_t batch_size_bytes;   //max bytes loaded at once: B
 

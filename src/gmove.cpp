@@ -346,18 +346,17 @@ int gmove(int argc, char* argv[]) {
         ERROR("signal move offset value must not be less than zero%s", "")
         return -1;
     }
-//    if(opt.kmer_size <= opt.sig_move_offset){
-//        ERROR("signal move offset value must less than the kmer length%s", "")
-//        return -1;
-//    }
+    if(opt.kmer_size <= opt.sig_move_offset){
+        WARNING("signal move offset value should be less than the kmer length%s", "")
+    }
 
     int ret_create_dir = create_dir(output_dir);
     if(ret_create_dir == -1){
-        fprintf(stderr,"Output directory %s is not empty. Please remove it or specify another directory.", output_dir);
+        ERROR("Output directory %s is not empty. Please remove it or specify another directory.", output_dir);
         return EXIT_FAILURE;
     }
     if(ret_create_dir == -2){
-        fprintf(stderr,"Could not create the output dir %s.", output_dir);
+        ERROR("Could not create the output dir %s.", output_dir);
         return EXIT_FAILURE;
     }
     std::string kmer_dump = std::string(std::string(output_dir) + "/dump");
@@ -478,7 +477,7 @@ int gmove(int argc, char* argv[]) {
             fprintf(stderr,".paf input requires an additional .fastq file\n");
             exit(EXIT_FAILURE);
         }
-        INFO("%s", "sig_move_offset has no effect when using paf format's ss tag");
+//        INFO("%s", "sig_move_offset has no effect when using paf format's ss tag");
         process_move_table_paf(move_table, kmer_file_pointer_array, &sp, &opt, kmer_frequency_map, kmers, input_fastq_file);
     } else if(extension == ".bam" || extension == ".sam") {
         //SAM parsing
@@ -724,9 +723,9 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
         uint64_t len_raw_signal = rec->len_raw_signal;
         std::vector<double> raw_signal(len_raw_signal);
         assert((uint64_t)trim_offset < len_raw_signal);
-        len_raw_signal = len_raw_signal - trim_offset;
+//        len_raw_signal = len_raw_signal - trim_offset;
         for(uint64_t i=0;i<len_raw_signal;i++){
-            double pA = TO_PICOAMPS(rec->raw_signal[i+trim_offset],rec->digitisation,rec->offset,rec->range);
+            double pA = TO_PICOAMPS(rec->raw_signal[i],rec->digitisation,rec->offset,rec->range);
             if(pA < opt.pa_min || pA > opt.pa_max){
                 continue;
             }
@@ -770,10 +769,6 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
 
         size_t st_k = start_kmer; size_t end_k = end_kmer; //if DNA, start k-kmer index is start_kmer column in paf and end k-kmer index is end_kmer column in paf
         int8_t rna = start_kmer > end_kmer ? 1 : 0; //if RNA start_kmer>end_kmer in paf
-        if (rna){
-            fprintf(stderr,"Error: RNA support is not implemented yet\n");
-            exit(EXIT_FAILURE);
-        }
         if(rna){ st_k = end_kmer; end_k = start_kmer; } //if RNA, start k-kmer index is end_kmer column in paf and end k-kmer index is start_kmer column in paf
 
         size_t i_k = st_k; size_t i_raw = start_raw; //current k-mer index and current raw signal index
@@ -791,7 +786,7 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
 
                 if(*ss=='I'){ //if an insertion, current raw signal index is incremented by num
                     i_raw += num;
-                } else if(*ss=='D'){ //if an deletion, current k-mer index is incremented by num
+                } else if(*ss=='D'){ //if a deletion, current k-mer index is incremented by num
                     i_k += num;
                 } else if (*ss==','){ //if a mapping, increment accordingly and set raw signal indices for the current k-mer
                     end_raw_idx[i_k] = i_raw; i_raw += num;
@@ -811,20 +806,21 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
             }
             ss++;
         }
-
         if(i_raw!=end_raw){ fprintf(stderr,"Bad ss: Signal end mismatch\n"); exit(1); } //current raw signal index should be equal to end_raw
         if(i_k!=end_k){ fprintf(stderr,"Bad ss: Kmer end mismatch\n"); exit(1); } //current k-mer index should be equal to end_k
-
-        for(size_t i=st_k; i<end_k; i++){
-            if(end_raw_idx[i]==-1){
-                if(st_raw_idx[i] != -1) { fprintf(stderr,"Bad ss: This shoud not have happened\n"); exit(1); }//if st_raw_idx[i] is -1, then end_raw_idx[i] should also be -1
+        for(size_t i=st_k; i<=end_k-opt.kmer_size; i++){
+            if(end_raw_idx[i+opt.sig_move_offset]==-1){
+                if(st_raw_idx[i+opt.sig_move_offset] != -1) { fprintf(stderr,"Bad ss: This shoud not have happened\n"); exit(1); }//if st_raw_idx[i] is -1, then end_raw_idx[i] should also be -1
 //                printf("%s\t%d\t.\t.\n", paf->rid, rna ? len_kmer-i-1 : i);
             }else {
-//                printf("%s\t%d\t%d\t%d\n", paf->rid, rna ? len_kmer-i-1 : i, end_raw_idx[i], st_raw_idx[i]);
+//                printf("%s\t%d\t%d\t%d\n", paf->rid, rna ? len_kmer-i-1 : i, end_raw_idx[i+opt.sig_move_offset], st_raw_idx[i]);
                 std::string kmer = fastq_seq.substr(i, opt.kmer_size);
+                if(rna){
+                    kmer = fastq_seq.substr(end_k-i-opt.kmer_size, opt.kmer_size);
+                }
 //                fprintf(stdout,"%s\n", kmer.c_str());
-                uint32_t raw_start_local = end_raw_idx[i];
-                uint32_t raw_end_local = st_raw_idx[i];
+                uint32_t raw_start_local = end_raw_idx[i+opt.sig_move_offset];
+                uint32_t raw_end_local = st_raw_idx[i+opt.sig_move_offset];
                 if (raw_end_local - raw_start_local > opt.max_dur){
                     continue;
                 }
@@ -844,7 +840,6 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
                 } else{
                     raw_end_local = raw_end_local + opt.signal_print_margin;
                 }
-//                printf("%d\t%d\n", end_raw_idx[i], st_raw_idx[i]);
                 std::vector<double> raw_signal_local(raw_signal.begin()+raw_start_local,raw_signal.begin()+raw_end_local);
                 size_t raw_signal_kmer_length = raw_signal_local.size();
                 size_t k;

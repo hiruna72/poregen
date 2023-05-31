@@ -217,7 +217,7 @@ int gmove(int argc, char* argv[]) {
     int signal_scale = 0;
 
     char dna_set[] = {'A', 'C', 'G', 'T'};
-    char rna_set[] = {'A', 'C', 'G', 'U'};
+    char rna_set[] = {'A', 'C', 'G', 'T'};
 
     FILE *fp_help = stderr;
 
@@ -431,6 +431,7 @@ int gmove(int argc, char* argv[]) {
     fprintf(stderr,"signal_print_margin: %d\n", opt.signal_print_margin);
     fprintf(stderr,"kmer index closed interval : [%d-%d]\n", opt.index_start, opt.index_end);
     fprintf(stderr,"no.of output files: %d\n", opt.file_limit);
+    fprintf(stderr,"sample limit : %d\n", opt.sample_limit);
     if(opt.flag_rna){
         fprintf(stderr,"dataset: RNA\n");
     }else{
@@ -712,22 +713,12 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
         }
         paf_rec_t *paf = parse_paf_rec(line);
         std::string read_id(paf->rid);
-
-        int fastq_len;
-        char* seq;
-        // this call is not threadsafe
-        seq = fai_fetch(m_fai, read_id.c_str(), &fastq_len);
-        if(seq == NULL) {
-            fprintf(stderr,"Error in fetching the fastq sequence for read: %s\n", paf->rid);
-            exit(EXIT_FAILURE);
-        }
-
-        std::string fastq_seq(seq);
-        free(seq);
+        std::string target_id(paf->tid);
         int32_t trim_offset = paf->query_start;
 
-        VERBOSE("%s\n",read_id.c_str());
-        VERBOSE("%s\t%d\t%" PRIu32 "\n", read_id.c_str(), fastq_len, trim_offset);
+//        if(strcmp(read_id.c_str(), "2de63dd6-05b9-4ee1-bd6f-bf4cf3bc1a45")!=0){
+//            continue;
+//        }
 
         ret = slow5_get(read_id.c_str(), &rec, sp);
         if(ret < 0){
@@ -762,11 +753,6 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
             }
         }
 
-        if(fastq_len < 10){
-            fprintf(stderr,"\t%d", fastq_len);
-            continue;
-        }
-
         char *ss=paf->ss;
         size_t start_raw=paf->query_start; size_t end_raw=paf->query_end; //int len_raw_signal=paf->qlen;
         size_t start_kmer=paf->target_start; size_t end_kmer=paf->target_end;
@@ -788,8 +774,23 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
             ERROR("Data is detected as RNA. Please provide --rna%s", "");
             exit(1);
         }
-        size_t i_k = st_k; size_t i_raw = start_raw; //current k-mer index and current raw signal index
+        size_t i_k = 0; size_t i_raw = start_raw; //current k-mer index and current raw signal index
 
+        int fastq_len;
+        char* seq;
+        // this call is not threadsafe
+//        seq = fai_fetch(m_fai, read_id.c_str(), &fastq_len);
+        seq = faidx_fetch_seq(m_fai, target_id.c_str(), st_k, end_k-1, &fastq_len);
+        if(seq == NULL) {
+            fprintf(stderr,"Error in fetching the fastq sequence for read: %s\n", paf->rid);
+            exit(EXIT_FAILURE);
+        }
+        std::string fastq_seq(seq);
+        free(seq);
+        VERBOSE("%s\n",read_id.c_str());
+        VERBOSE("%s\t%d\t%" PRIu32 "\n", read_id.c_str(), fastq_len, trim_offset);
+
+        size_t num_deletion = 0;
         //buffer for storing digits preceding each operation and its index
         char buff[11]; int i_buff=0;
         while(*ss){
@@ -804,7 +805,9 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
                 if(*ss=='I'){ //if an insertion, current raw signal index is incremented by num
                     i_raw += num;
                 } else if(*ss=='D'){ //if a deletion, current k-mer index is incremented by num
-                    i_k += num;
+//                    i_k += num;
+                    fastq_seq.erase(fastq_len-i_k-num_deletion, num);
+                    num_deletion += num;
                 } else if (*ss==','){ //if a mapping, increment accordingly and set raw signal indices for the current k-mer
                     end_raw_idx[i_k] = i_raw; i_raw += num;
                     st_raw_idx[i_k] = i_raw; i_k++;
@@ -823,9 +826,13 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
             }
             ss++;
         }
-        if(i_raw!=end_raw){ fprintf(stderr,"Bad ss: Signal end mismatch\n"); exit(1); } //current raw signal index should be equal to end_raw
-        if(i_k!=end_k){ fprintf(stderr,"Bad ss: Kmer end mismatch\n"); exit(1); } //current k-mer index should be equal to end_k
-        for(size_t i=st_k; i<=end_k-opt.kmer_size; i++){
+        fastq_len = fastq_seq.size();
+//        fprintf(stderr, "%s\n", fastq_seq.c_str());
+//        fprintf(stderr, "%zu\n", num_deletion);
+//        fprintf(stderr, "%zu\n", fastq_len);
+//        if(i_raw!=end_raw){ fprintf(stderr,"Bad ss: Signal end mismatch\n"); exit(1); } //current raw signal index should be equal to end_raw
+//        if(i_k!=end_k){ fprintf(stderr,"Bad ss: Kmer end mismatch\n"); exit(1); } //current k-mer index should be equal to end_k
+        for(size_t i=0; i<=fastq_len-opt.kmer_size; i++){
             if(end_raw_idx[i+opt.sig_move_offset]==-1){
                 if(st_raw_idx[i+opt.sig_move_offset] != -1) { fprintf(stderr,"Bad ss: This shoud not have happened\n"); exit(1); }//if st_raw_idx[i] is -1, then end_raw_idx[i] should also be -1
 //                printf("%s\t%d\t.\t.\n", paf->rid, rna ? len_kmer-i-1 : i);
@@ -833,11 +840,11 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
 //                printf("%s\t%d\t%d\t%d\n", paf->rid, rna ? len_kmer-i-1 : i, end_raw_idx[i+opt.sig_move_offset], st_raw_idx[i]);
                 std::string kmer = fastq_seq.substr(i, opt.kmer_size);
                 if(rna){
-                    kmer = fastq_seq.substr(end_k-i-opt.kmer_size, opt.kmer_size);
+                    kmer = fastq_seq.substr(fastq_len-i-opt.kmer_size, opt.kmer_size);
                 }
-//                fprintf(stdout,"%s\n", kmer.c_str());
                 uint32_t raw_start_local = end_raw_idx[i+opt.sig_move_offset];
                 uint32_t raw_end_local = st_raw_idx[i+opt.sig_move_offset];
+//                fprintf(stdout,"%s\t%d\t%d\t%d\n", kmer.c_str(), raw_start_local, raw_end_local, i);
                 if (raw_end_local - raw_start_local > opt.max_dur){
                     continue;
                 }

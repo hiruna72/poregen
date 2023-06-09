@@ -37,8 +37,10 @@
 #define NUM_DNA_BASES 4
 #define DEFAULT_KMER_SIZE 9
 #define MAXIMUM_MOVE_DURATION 70
+#define MINIMUM_MOVE_DURATION 5
 #define PA_MAX 180.0
 #define PA_MIN 40.0
+#define KMER_PICK_MARGIN 2
 
 enum signal_scaling{ noscale, medmad_scale };
 
@@ -64,12 +66,15 @@ typedef struct {
 
     //signal_related
     uint32_t max_dur; //max_dur
+    uint32_t min_dur; //min_dur
     uint32_t sig_move_offset; //m
     uint32_t signal_print_margin;
     uint32_t sample_limit;
     enum signal_scaling signal_scale;
     double pa_max;
     double pa_min;
+
+    uint32_t kmer_pick_margin;
 
 } opt_t;
 

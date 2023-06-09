@@ -60,13 +60,15 @@ static struct option long_options[] = {
     {"fastq", required_argument, NULL, 0},     //10
     {"", no_argument, 0, 'd'},                 //11 delimit output files
     {"max_dur", required_argument, 0, 0},           //12
-    {"pa_min", required_argument, 0, 0},           //13
-    {"pa_max", required_argument, 0, 0},           //14
-    {"rna", no_argument, 0, 0},                     //15
-    {"verbose", required_argument, 0, 'v'},        //16 verbosity level [1]
-    {"help", no_argument, 0, 'h'},                 //17
-    {"version", no_argument, 0, 'V'},              //18
-    {"debug-break",required_argument, 0, 0},       //19 break after processing the first batch (used for debugging)
+    {"min_dur", required_argument, 0, 0},           //13
+    {"pa_min", required_argument, 0, 0},           //14
+    {"pa_max", required_argument, 0, 0},           //15
+    {"kmer_pick_margin", required_argument, 0, 0},           //16
+    {"rna", no_argument, 0, 0},                     //17
+    {"verbose", required_argument, 0, 'v'},        //18 verbosity level [1]
+    {"help", no_argument, 0, 'h'},                 //19
+    {"version", no_argument, 0, 'V'},              //20
+    {"debug-break",required_argument, 0, 0},       //21 break after processing the first batch (used for debugging)
     {0, 0, 0, 0}};
 
 void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer_file_pointer_array, slow5_file_t **sp_ptr, opt_t *opt_ptr, std::map<std::string,uint64_t> &kmer_frequency_map, std::vector<std::string> &kmers);
@@ -91,8 +93,10 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"   --fastq FILE               fastq file (optional - should be provided with .paf) \n");
     fprintf(fp_help,"   -d                         delimit output files per read\n");
     fprintf(fp_help,"   --max_dur                  maximum move duration allowed for samples [%d]\n",opt.max_dur);
+    fprintf(fp_help,"   --min_dur                  maximum move duration allowed for samples [%d]\n",opt.min_dur);
     fprintf(fp_help,"   --pa_min                   minimum pA level a sampling signal should have [%.3f]\n",opt.pa_min);
-    fprintf(fp_help,"   --pa_madx                  maximum pA level a sampling signal should have [%.3f]\n",opt.pa_max);
+    fprintf(fp_help,"   --pa_max                  maximum pA level a sampling signal should have [%.3f]\n",opt.pa_max);
+    fprintf(fp_help,"   --kmer_pick_margin         distance in bases from an indel when picking a kmer as sample [%d]\n",opt.kmer_pick_margin);
     fprintf(fp_help,"   --rna                      dataset is rna\n");
     fprintf(fp_help,"   -h                         help\n");
     fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
@@ -197,6 +201,14 @@ void delimit_kmer_files(std::map<std::string, FILE *> *kmer_file_pointer_array_p
         }
     }
 }
+int pick_this_kmer(std::vector<int> indel_pos, int left_pos, int kmer_length, int kmer_pick_margin){
+    for(size_t i=0; i<indel_pos.size(); i++){
+        if(left_pos+kmer_length+kmer_pick_margin <= indel_pos[i] && indel_pos[i-1] <= left_pos-kmer_pick_margin){
+            return 1;
+        }
+    }
+    return 0;
+}
 
 int gmove(int argc, char* argv[]) {
 
@@ -217,7 +229,7 @@ int gmove(int argc, char* argv[]) {
     int signal_scale = 0;
 
     char dna_set[] = {'A', 'C', 'G', 'T'};
-    char rna_set[] = {'A', 'C', 'G', 'T'};
+    char rna_set[] = {'A', 'C', 'G', 'U'};
 
     FILE *fp_help = stderr;
 
@@ -300,12 +312,16 @@ int gmove(int argc, char* argv[]) {
         } else if (c == 0 && longindex == 12){
             opt.max_dur = atoi(optarg);
         } else if (c == 0 && longindex == 13){
-            opt.pa_min = atof(optarg);
+            opt.min_dur = atoi(optarg);
         } else if (c == 0 && longindex == 14){
-            opt.pa_max = atof(optarg);
+            opt.pa_min = atof(optarg);
         } else if (c == 0 && longindex == 15){
+            opt.pa_max = atof(optarg);
+        } else if (c == 0 && longindex == 16){
+            opt.kmer_pick_margin = atoi(optarg);
+        } else if (c == 0 && longindex == 17){
             opt.flag_rna = 1;
-        } else if (c == 0 && longindex == 19){ //debug break
+        } else if (c == 0 && longindex == 21){ //debug break
             opt.debug_break = atoi(optarg);
         }
     }
@@ -432,6 +448,9 @@ int gmove(int argc, char* argv[]) {
     fprintf(stderr,"kmer index closed interval : [%d-%d]\n", opt.index_start, opt.index_end);
     fprintf(stderr,"no.of output files: %d\n", opt.file_limit);
     fprintf(stderr,"sample limit : %d\n", opt.sample_limit);
+    fprintf(stderr,"sample max duration : %d\n", opt.max_dur);
+    fprintf(stderr,"sample min duration : %d\n", opt.min_dur);
+    fprintf(stderr,"sample kmer_pick_margin : %d\n", opt.kmer_pick_margin);
     if(opt.flag_rna){
         fprintf(stderr,"dataset: RNA\n");
     }else{
@@ -622,6 +641,9 @@ void process_move_table_file(char *move_table, std::map<std::string,FILE*> &kmer
                 if (raw_end_local - raw_start_local > opt.max_dur){
                     continue;
                 }
+                if (raw_end_local - raw_start_local < opt.min_dur){
+                    continue;
+                }
                 if (kmer_frequency_map.find(kmer) == kmer_frequency_map.end()) {
                     continue;
                 }
@@ -754,7 +776,7 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
         }
 
         char *ss=paf->ss;
-        size_t start_raw=paf->query_start; size_t end_raw=paf->query_end; //int len_raw_signal=paf->qlen;
+        size_t start_raw=paf->query_start; //size_t end_raw=paf->query_end; //int len_raw_signal=paf->qlen;
         size_t start_kmer=paf->target_start; size_t end_kmer=paf->target_end;
 //        int len_kmer=paf->tlen;
         // Raw signal start index for the corresponding k-mer and Raw signal end index for the corresponding k-mer
@@ -775,7 +797,7 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
             exit(1);
         }
         size_t i_k = 0; size_t i_raw = start_raw; //current k-mer index and current raw signal index
-
+        size_t i_k_raw = 0;
         int fastq_len;
         char* seq;
         // this call is not threadsafe
@@ -787,11 +809,22 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
         }
         std::string fastq_seq(seq);
         free(seq);
+        if(rna){
+            std::replace(fastq_seq.begin(), fastq_seq.end(), 'T', 'U'); // replace all 'T' to 'U'
+        }
         VERBOSE("%s\n",read_id.c_str());
         VERBOSE("%s\t%d\t%" PRIu32 "\n", read_id.c_str(), fastq_len, trim_offset);
+//        fprintf(stderr, "%d\n", fastq_len);
 
         size_t num_deletion = 0;
+        std::vector<int> indel_pos;
+        if(rna==0){
+            indel_pos.push_back(-st_k);
+        }
         //buffer for storing digits preceding each operation and its index
+
+        std::string refined_fastq_seq = "";
+
         char buff[11]; int i_buff=0;
         while(*ss){
             if(*ss==',' || *ss=='I' || *ss=='D'){
@@ -804,13 +837,20 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
 
                 if(*ss=='I'){ //if an insertion, current raw signal index is incremented by num
                     i_raw += num;
+                    indel_pos.push_back(i_k-num_deletion);
                 } else if(*ss=='D'){ //if a deletion, current k-mer index is incremented by num
-//                    i_k += num;
-                    fastq_seq.erase(fastq_len-i_k-num_deletion, num);
+                    indel_pos.push_back(i_k-num_deletion);
+                    i_k += num;
                     num_deletion += num;
                 } else if (*ss==','){ //if a mapping, increment accordingly and set raw signal indices for the current k-mer
-                    end_raw_idx[i_k] = i_raw; i_raw += num;
-                    st_raw_idx[i_k] = i_raw; i_k++;
+                    if(rna){
+                        refined_fastq_seq.push_back(fastq_seq[fastq_len-i_k-1]);
+                    } else{
+                        refined_fastq_seq.push_back(fastq_seq[i_k]);
+                    }
+                    end_raw_idx[i_k_raw] = i_raw; i_raw += num;
+                    st_raw_idx[i_k_raw] = i_raw; i_k++;
+                    i_k_raw++;
                 }
                 if(i_k >= cap){
                     st_raw_idx=(int *)realloc(st_raw_idx, sizeof(int)*cap*2);
@@ -826,26 +866,54 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
             }
             ss++;
         }
-        fastq_len = fastq_seq.size();
-//        fprintf(stderr, "%s\n", fastq_seq.c_str());
-//        fprintf(stderr, "%zu\n", num_deletion);
-//        fprintf(stderr, "%zu\n", fastq_len);
+        fastq_len = refined_fastq_seq.size();
+//        for(size_t i=0; i<indel_pos.size(); i++){
+//            fprintf(stderr, "%d,", indel_pos[i]);
+//        }
+//        fprintf(stderr, "\n\n");
+        if(rna){
+            for(size_t i=0; i<indel_pos.size(); i++){
+                indel_pos[i] = fastq_len - indel_pos[i];
+            }
+            indel_pos.push_back(-st_k);
+            std::reverse(indel_pos.begin(), indel_pos.end());
+            std::reverse(refined_fastq_seq.begin(), refined_fastq_seq.end());
+        }
+        indel_pos.push_back(end_k+opt.kmer_pick_margin);
+
+//        fprintf(stderr, "%s\n", refined_fastq_seq.c_str());
+//        fprintf(stderr, "%d\n", fastq_len);
 //        if(i_raw!=end_raw){ fprintf(stderr,"Bad ss: Signal end mismatch\n"); exit(1); } //current raw signal index should be equal to end_raw
 //        if(i_k!=end_k){ fprintf(stderr,"Bad ss: Kmer end mismatch\n"); exit(1); } //current k-mer index should be equal to end_k
         for(size_t i=0; i<=fastq_len-opt.kmer_size; i++){
             if(end_raw_idx[i+opt.sig_move_offset]==-1){
-                if(st_raw_idx[i+opt.sig_move_offset] != -1) { fprintf(stderr,"Bad ss: This shoud not have happened\n"); exit(1); }//if st_raw_idx[i] is -1, then end_raw_idx[i] should also be -1
+                if(st_raw_idx[i+opt.sig_move_offset] != -1) { fprintf(stderr,"Bad ss: This should not have happened\n"); exit(1); }//if st_raw_idx[i] is -1, then end_raw_idx[i] should also be -1
 //                printf("%s\t%d\t.\t.\n", paf->rid, rna ? len_kmer-i-1 : i);
             }else {
 //                printf("%s\t%d\t%d\t%d\n", paf->rid, rna ? len_kmer-i-1 : i, end_raw_idx[i+opt.sig_move_offset], st_raw_idx[i]);
-                std::string kmer = fastq_seq.substr(i, opt.kmer_size);
+                std::string kmer = "";
                 if(rna){
-                    kmer = fastq_seq.substr(fastq_len-i-opt.kmer_size, opt.kmer_size);
+                    kmer = refined_fastq_seq.substr(fastq_len-i-opt.kmer_size, opt.kmer_size);
+//                    fprintf(stdout,"%s\t%zu\n", kmer.c_str(), fastq_len-i-opt.kmer_size);
+                    int ret_pick_kmer = pick_this_kmer(indel_pos, fastq_len-i-opt.kmer_size, opt.kmer_size, opt.kmer_pick_margin);
+                    if(ret_pick_kmer == 0){
+                        continue;
+                    }
+                } else{
+                    kmer = refined_fastq_seq.substr(i, opt.kmer_size);
+//                    fprintf(stdout,"%s\n", kmer.c_str());
+                    int ret_pick_kmer = pick_this_kmer(indel_pos, i, opt.kmer_size, opt.kmer_pick_margin);
+                    if(ret_pick_kmer == 0){
+                        continue;
+                    }
                 }
                 uint32_t raw_start_local = end_raw_idx[i+opt.sig_move_offset];
                 uint32_t raw_end_local = st_raw_idx[i+opt.sig_move_offset];
-//                fprintf(stdout,"%s\t%d\t%d\t%d\n", kmer.c_str(), raw_start_local, raw_end_local, i);
+//                fprintf(stdout,"%s\t%d\t%d\t%zu\n", kmer.c_str(), raw_start_local, raw_end_local, i);
                 if (raw_end_local - raw_start_local > opt.max_dur){
+                    continue;
+                }
+                if (raw_end_local - raw_start_local < opt.min_dur){
                     continue;
                 }
                 if (kmer_frequency_map.find(kmer) == kmer_frequency_map.end()) {
@@ -1131,6 +1199,9 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
                 seq_start++;
 
                 if (raw_end_local - raw_start_local > opt.max_dur){
+                    continue;
+                }
+                if (raw_end_local - raw_start_local < opt.min_dur){
                     continue;
                 }
                 if (kmer_frequency_map.find(kmer) == kmer_frequency_map.end()) {

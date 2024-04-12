@@ -35,6 +35,13 @@ basic options:
    --version                  print version
 
 ````
+## Quick start
+
+For Linux: download the compiled binaries from the [latest release](https://github.com/hiruna72/poregen/releases).
+```sh
+wget "https://github.com/hiruna72/poregen/releases/download/v0.0.1/poregen-v0.0.1-linux-x86-64"
+./poregen-v0.0.1-linux-x86-64
+```
 
 ## Compilation and running
 

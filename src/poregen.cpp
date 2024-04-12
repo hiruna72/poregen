@@ -227,10 +227,12 @@ void init_opt(opt_t* opt) {
     opt->f_out = stdout;
 
     opt->max_dur = MAXIMUM_MOVE_DURATION;
+    opt->min_dur = MINIMUM_MOVE_DURATION;
     opt->pa_max = PA_MAX;
     opt->pa_min = PA_MIN;
 
     opt->flag_rna = 0;
+    opt->kmer_pick_margin = KMER_PICK_MARGIN;
 
 }
 

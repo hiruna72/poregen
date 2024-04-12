@@ -78,7 +78,7 @@ void free_paf_rec(paf_rec_t *paf);
 paf_rec_t *parse_paf_rec(char *buffer);
 
 static inline void print_help_msg(FILE *fp_help, opt_t opt){
-    fprintf(fp_help,"Usage: poregen gmove reads.blow5 move_table output_dir\n");
+    fprintf(fp_help,"Usage: poregen gmove reads.blow5 event_alignment_file output_dir\n");
     fprintf(fp_help,"\nbasic options:\n");
     fprintf(fp_help,"   -k INT                     kmer_size [%d]\n",opt.kmer_size);
     fprintf(fp_help,"   -m INT                     move start offset [%d]\n",opt.sig_move_offset);
@@ -803,7 +803,7 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
         // this call is not threadsafe
 //        seq = fai_fetch(m_fai, read_id.c_str(), &fastq_len);
         seq = faidx_fetch_seq(m_fai, target_id.c_str(), st_k, end_k-1, &fastq_len);
-        if(fastq_len < opt.kmer_size){
+        if(fastq_len < (int)opt.kmer_size){
             continue;
         }
         if(seq == NULL) {

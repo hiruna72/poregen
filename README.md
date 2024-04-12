@@ -6,6 +6,7 @@ The following tools are available.
 1. `gmove` - collect raw signal event samples for kmers from an event alignment file. The alignment can be signal-to-read or signal-to-reference.
 
 ## Help
+````
 
  ./poregen-v0.0.1-linux-x86-64 gmove
 Usage: poregen gmove reads.blow5 event_alignment_file output_dir
@@ -33,10 +34,11 @@ basic options:
    --verbose INT              verbosity level [3]
    --version                  print version
 
+````
+
 ## Compilation and running
 
 ```
-sudo apt-get install zlib1g-dev   #install zlib development libraries
 git clone --recursive https://github.com/hiruna72/poregen.git
 cd poregen
 make

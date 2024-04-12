@@ -803,6 +803,9 @@ void process_move_table_paf(char *move_table, std::map<std::string,FILE*> &kmer_
         // this call is not threadsafe
 //        seq = fai_fetch(m_fai, read_id.c_str(), &fastq_len);
         seq = faidx_fetch_seq(m_fai, target_id.c_str(), st_k, end_k-1, &fastq_len);
+        if(fastq_len < opt.kmer_size){
+            continue;
+        }
         if(seq == NULL) {
             fprintf(stderr,"Error in fetching the fastq sequence for read: %s\n", paf->rid);
             exit(EXIT_FAILURE);

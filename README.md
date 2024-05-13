@@ -56,7 +56,7 @@ make
 The example command below collects raw signal events for all the 5-mers with a starting offset of 4 (the first 4 events will be skipped). It takes three main arguments: the sequence file (reads.fastq), the signal file (reads.blow5) and the event alignment file (event-alignment.paf). Additionally, each k-mer will have maximum 5000 event samples collected. The raw signals will be converted to pA levels and normalized using Median-Median-Absolute-Difference scaling (med-MAD). The collected event length will be betweeen 19 and 51 signal points.
 
 ````
-poregen gmove --fastq reads.fastq --k-mer_size 5 --event_offset 4 --sample_limit 5000
+poregen gmove --fastq reads.fastq --k-mer_size 5 -m 4 --sample_limit 5000
         --rna --scaling med-mad --min_dur 19 --max_dur 51 reads.blow5 event-alignment.paf output_dir
 
 ````

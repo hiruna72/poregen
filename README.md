@@ -48,6 +48,7 @@ wget "https://github.com/hiruna72/poregen/releases/download/v0.0.1/poregen-v0.0.
 ```
 git clone --recursive https://github.com/hiruna72/poregen.git
 cd poregen
+mkdir build
 make
 ./poregen --help
 ```

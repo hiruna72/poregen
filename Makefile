@@ -44,7 +44,7 @@ $(BUILD_DIR)/poregen.o: src/poregen.cpp src/misc.h src/error.h src/poregen.h
 $(BUILD_DIR)/subtool0.o: src/subtool0.c src/error.h
 	$(CXX) $(LANGFLAG) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-$(BUILD_DIR)/gmove.o: src/gmove.cpp src/error.h src/ksort.h
+$(BUILD_DIR)/gmove.o: src/gmove.cpp src/error.h src/ksort.h $(BUILD_DIR)/lib/libhts.a
 	$(CXX) $(LANGFLAG) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/kmer_freq.o: src/kmer_freq.cpp src/error.h

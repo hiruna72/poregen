@@ -109,6 +109,24 @@ The dataset (the raw signals and the bash scripts) for this workflow is availabl
 
 ````
 
+## F1-score metric
+
+A signal-to-reference alignment comparison metric that calculates the F1 score between ground truth and query alignments is available at `src/f1_score`
+
+We define:
+* True Positives (TP): Signal points correctly mapped to the reference base. We allow a threshold of 1 base when determining true positives, meaning a signal point may be mapped to a base up to one position away (left or right) from the correct base and still be considered a TP.
+* False Positives (FP): Signal points incorrectly mapped to a base.
+* False Negatives (FN): Missed mappings that should have aligned to the reference base.
+* True Negatives (TN): Signal points that should not map to any base.
+* Precision = TP / (TP + FP)
+* Recall = TP / (TP + FN)
+* F1-Score = 2 × (Precision × Recall) / (Precision + Recall)
+
+````
+python src/f1score.py ground_truth_alignment.bam query_alignment.bam --read_limit 1000 --base_shift 0  --threshold 1  --rna
+````
+
+## Citation
 Poregen preprint - [https://doi.org/10.1101/2024.06.30.601452](https://doi.org/10.1101/2024.06.30.601452)
 
 ## Acknowledgement

@@ -76,7 +76,7 @@ On Fedora/CentOS : sudo dnf/yum install zlib-devel
 ## Example workflow
 ### Generating a 5-mer for RNA004 using dorado basecaller's move table
 The dataset (the raw signals and the bash scripts) for this workflow is available at [10.5281/zenodo.10966311](https://doi.org/10.5281/zenodo.10966311)
-The following bash code snippet gives an overiew of the example workflow. Please view the complete view bash script in the dataset for better understanding.
+The following bash code snippet gives an overiew of the example workflow. Please view the full bash script in the dataset for better understanding.
 
 ````
 STEP 1 - basecall the dataset to obtain the move table (install buttery-eel-0.4.2 and download ont-dorado-server-7.2.13 and edit the script.sh)

@@ -76,40 +76,40 @@ On Fedora/CentOS : sudo dnf/yum install zlib-devel
 ## Example workflow
 ### Generating a 5-mer for RNA004 using dorado basecaller's move table
 The dataset (the raw signals and the bash scripts) for this workflow is available at [10.5281/zenodo.10966311](https://doi.org/10.5281/zenodo.10966311)
+The following bash code snippet gives an overiew of the example workflow. Please view the complete view bash script in the dataset for better understanding.
 
 ````
-# STEP 1 - basecall the dataset to obtain the move table (install buttery-eel-0.4.2 and download ont-dorado-server-7.2.13 and edit the script.sh)
-#buttery-eel-0.4.2+ont-dorado-server-7.2.13.script.sh  --moves_out -i ${SIGNAL} --config rna_rp4_130bps_sup.cfg --device cuda:all -o ${SAM} &>> a.log || die "eel failed"
+STEP 1 - basecall the dataset to obtain the move table (install buttery-eel-0.4.2 and download ont-dorado-server-7.2.13 and edit the script.sh)
+buttery-eel-0.4.2+ont-dorado-server-7.2.13.script.sh  --moves_out -i ${SIGNAL} --config rna_rp4_130bps_sup.cfg --device cuda:all -o ${SAM} &>> a.log || die "eel failed"
 
-# STEP 2 - the basecalling output sam file has no header; hence add a fake header and convert to bam format. convert bam to fastq and fasta formats.
-#echo -e fake_reference'\t'0 > fake_reference.fa.fai
-#samtools view ${SAM} -h -t fake_reference.fa.fai -o ${BAM}
-#samtools fastq ${BAM} > ${FASTQ} && sed -i '2~4s/N/T/g' ${FASTQ}
-#awk 'NR%4==1 {print ">"substr($0, 2)} NR%4==2' ${FASTQ} > ${FASTA}
+STEP 2 - the basecalling output sam file has no header; hence add a fake header and convert to bam format. convert bam to fastq and fasta formats.
+echo -e fake_reference'\t'0 > fake_reference.fa.fai
+samtools view ${SAM} -h -t fake_reference.fa.fai -o ${BAM}
+samtools fastq ${BAM} > ${FASTQ} && sed -i '2~4s/N/T/g' ${FASTQ}
+awk 'NR%4==1 {print ">"substr($0, 2)} NR%4==2' ${FASTQ} > ${FASTA}
 
-# STEP 3 - check if the fasta file has enough k-mer (5-mer) coverage
-#python count_kmer_freq.py 5 ${FASTA} > ${OUTPUT_DIR}/read_kmer_freq.txt
+STEP 3 - check if the fasta file has enough k-mer (5-mer) coverage
+python count_kmer_freq.py 5 ${FASTA} > ${OUTPUT_DIR}/read_kmer_freq.txt
 
-# STEP 4 - convert the move table to ss format using squigualiser reform
-#source squigualiser_venv/bin/activate && squigualiser reform -b ${BAM} --rna -c -o ${REFORM} -k 1 && deactivate
+STEP 4 - convert the move table to ss format using squigualiser reform
+source squigualiser_venv/bin/activate && squigualiser reform -b ${BAM} --rna -c -o ${REFORM} -k 1 && deactivate
 
-# STEP 5 - collect raw signal event samples for each kmer using poregen gmove program
-#${POREGEN} gmove --fastq ${FASTQ} -k 5 --sig_move_offset ${SIG_MOVE_OFFSET} --sample_limit ${SAMPLE_LIMIT} --file_limit 5000 --rna --scaling 1 ${SIGNAL} ${REFORM} ${OUTPUT_DIR}/poregen_output --max_dur ${MAX_DUR} --min_dur ${MIN_DUR} || die "gmove failed"
+STEP 5 - collect raw signal event samples for each kmer using poregen gmove program
+${POREGEN} gmove --fastq ${FASTQ} -k 5 --sig_move_offset ${SIG_MOVE_OFFSET} --sample_limit ${SAMPLE_LIMIT} --file_limit 5000 --rna --scaling 1 ${SIGNAL} ${REFORM} ${OUTPUT_DIR}/poregen_output --max_dur ${MAX_DUR} --min_dur ${MIN_DUR} || die "gmove failed"
 
-# STEP 6 - use the collected smaples to calculate median and stddev for each kmer to get a raw k-mer model
-#calculate_mean_stddev_all "${OUTPUT_DIR}/poregen_output/dump" "${OUTPUT_DIR}/raw_model" 3.1
+STEP 6 - use the collected smaples to calculate median and stddev for each kmer to get a raw k-mer model
+calculate_mean_stddev_all "${OUTPUT_DIR}/poregen_output/dump" "${OUTPUT_DIR}/raw_model" 3.1
 
-# STEP 7 - a) transform the median value to (median*STDDEV)+MEAN where MEAN and STDDEV is the mean and stddev of the all the pA converted signal dataset as a whole.
-# b) project stddev values to a custom range [2.5 4]
-#apply_transformation "${OUTPUT_DIR}/raw_model" "${OUTPUT_DIR}/transformed_model" 17.569300789355 84.112089074928 2.5 4
+STEP 7 - a) transform the median value to (median*STDDEV)+MEAN where MEAN and STDDEV is the mean and stddev of the all the pA converted signal dataset as a whole. b) project stddev values to a custom range [2.5 4]
+apply_transformation "${OUTPUT_DIR}/raw_model" "${OUTPUT_DIR}/transformed_model" 17.569300789355 84.112089074928 2.5 4
 
-# (optional) - set the stddev values to the central 3-mer (XYYYZ) as observed in ONT r9 RNA 5-mer model's stddev values
-#set_stddev "${OUTPUT_DIR}/transformed_model" "r9.4_70bps.u_to_t_rna.5mer.template.model" "${OUTPUT_DIR}/transformed_model_adjusted_stddev"
+(optional) - set the stddev values to the central 3-mer (XYYYZ) as observed in ONT r9 RNA 5-mer model's stddev values
+# set_stddev "${OUTPUT_DIR}/transformed_model" "r9.4_70bps.u_to_t_rna.5mer.template.model" "${OUTPUT_DIR}/transformed_model_adjusted_stddev"
 
-# (optional) - calculate the mean and stddev of the all the pA converted signal dataset as a whole.
-#sigtk pa -n ${SIGNAL} | cut -f3 | sed 's/,/\n/g' | datamash mean 1 sstdev 1
+(optional) - calculate the mean and stddev of the all the pA converted signal dataset as a whole.
+# sigtk pa -n ${SIGNAL} | cut -f3 | sed 's/,/\n/g' | datamash mean 1 sstdev 1
 # (optional) - process the gmove output to calculate the median dwell time of each k-mer
-#calculate_dwell_times_medians "${OUTPUT_DIR}/poregen_output/dump" "${OUTPUT_DIR}/dwell_times"
+# calculate_dwell_times_medians "${OUTPUT_DIR}/poregen_output/dump" "${OUTPUT_DIR}/dwell_times"
 
 
 ````

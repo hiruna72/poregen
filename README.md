@@ -56,7 +56,7 @@ For Linux: download the compiled binaries from the [latest release](https://gith
 ```sh
 wget "https://github.com/hiruna72/poregen/releases/download/v0.1.0/poregen-v0.1.0-x86-64-linux"
 chmod +x ./poregen-v0.1.0-x86-64-linux
-./poregen-v0.1.0-x86-64-linux
+./poregen-v0.1.0-x86-64-linux gmove --help
 ```
 
 ## Compilation and running
@@ -65,7 +65,7 @@ chmod +x ./poregen-v0.1.0-x86-64-linux
 git clone --recursive https://github.com/hiruna72/poregen.git
 cd poregen
 make
-./poregen --help
+./poregen gmove --help
 ```
 #### zlib dependency
 ```

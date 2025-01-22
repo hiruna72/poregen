@@ -67,6 +67,11 @@ mkdir build
 make
 ./poregen --help
 ```
+#### zlib dependency
+```
+On Debian/Ubuntu : sudo apt-get install zlib1g-dev
+On Fedora/CentOS : sudo dnf/yum install zlib-devel
+```
 
 ## Example workflow
 ### Generating a 5-mer for RNA004 using dorado basecaller's move table

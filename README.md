@@ -54,9 +54,9 @@ basic options:
 
 For Linux: download the compiled binaries from the [latest release](https://github.com/hiruna72/poregen/releases).
 ```sh
-wget "https://github.com/hiruna72/poregen/releases/download/v0.0.1/poregen-v0.0.1-linux-x86-64"
-chmod +x ./poregen-v0.0.1-linux-x86-64
-./poregen-v0.0.1-linux-x86-64
+wget "https://github.com/hiruna72/poregen/releases/download/v0.1.0/poregen-v0.1.0-x86-64-linux"
+chmod +x ./poregen-v0.1.0-x86-64-linux
+./poregen-v0.1.0-x86-64-linux
 ```
 
 ## Compilation and running
@@ -64,7 +64,6 @@ chmod +x ./poregen-v0.0.1-linux-x86-64
 ```
 git clone --recursive https://github.com/hiruna72/poregen.git
 cd poregen
-mkdir build
 make
 ./poregen --help
 ```

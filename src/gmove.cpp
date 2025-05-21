@@ -30,7 +30,7 @@ KSORT_INIT_GENERIC(int)
 #endif
 
 #define MAX_LEN_KMER 2000
-#define EXPECTED_STRIDE 5
+// #define EXPECTED_STRIDE 5
 
 typedef struct{
     char *rid;
@@ -1113,10 +1113,10 @@ void process_move_table_bam(char *move_table, std::map<std::string,FILE*> &kmer_
             }
             LOG_DEBUG("len_mv:%d\n", move_len);
             stride = bam_auxB2i(mv_array, 0);
-            if ( stride != EXPECTED_STRIDE) {
-                ERROR("expected stride of %d is missing.", EXPECTED_STRIDE);
-                exit(EXIT_FAILURE);
-            }
+            // if ( stride != EXPECTED_STRIDE) {
+            //     ERROR("expected stride of %d is missing.", EXPECTED_STRIDE);
+            //     exit(EXIT_FAILURE);
+            // }
         } else{
             ERROR("tag 'mv' specification is incorrect%s", "");
             exit(EXIT_FAILURE);

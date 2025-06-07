@@ -132,7 +132,24 @@ python src/f1score.py ground_truth_alignment.bam query_alignment.bam --read_limi
 ````
 
 ## Citation
-Poregen preprint - [https://doi.org/10.1101/2024.06.30.601452](https://doi.org/10.1101/2024.06.30.601452)
+
+Please cite the following in your publications when using our tool:
+
+> Samarakoon, H., Wan, Y.K., Parameswaran, S., Göke, J., Gamaarachchi, H. and Deveson, I.W., 2025. Leveraging basecaller’s move table to generate a lightweight k-mer model for nanopore sequencing analysis. Bioinformatics, 41(4), p.btaf111.
+
+```
+@article{samarakoon2025leveraging,
+  title={Leveraging basecaller’s move table to generate a lightweight k-mer model for nanopore sequencing analysis},
+  author={Samarakoon, Hiruna and Wan, Yuk Kei and Parameswaran, Sri and G{\"o}ke, Jonathan and Gamaarachchi, Hasindu and Deveson, Ira W},
+  journal={Bioinformatics},
+  volume={41},
+  number={4},
+  pages={btaf111},
+  year={2025},
+  publisher={Oxford University Press}
+}
+
+```
 
 ## Acknowledgement
 Code snippets have been taken from [Minimap2](https://github.com/lh3/minimap2), [F5c](https://github.com/hasindu2008/f5c), [Nanopolish](https://github.com/jts/nanopolish), and [Sigtk](https://github.com/hasindu2008/sigtk).
